@@ -1,4 +1,4 @@
-import type { CompanySettingDto, SiteSettingDto } from '@woontegra/shared';
+import type { CompanySettingDto, SiteSettingDto } from '@/shared/types/api';
 import { apiClient } from './client';
 
 export function getAdminSiteSettings() {

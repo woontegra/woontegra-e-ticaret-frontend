@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CompanySettingDto, SocialLinks } from '@woontegra/shared';
+import type { CompanySettingDto, SocialLinks } from '@/shared/types/api';
 import { ApiError } from '@/shared/api/client';
 import {
   getAdminCompanySettings,

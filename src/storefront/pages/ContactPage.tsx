@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { CompanySettingDto } from '@woontegra/shared';
+import type { CompanySettingDto } from '@/shared/types/api';
 import { SeoHead } from '@/storefront/components/SeoHead';
 import { usePublicCompanySettings, usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
 

@@ -1,4 +1,4 @@
-import type { CompanySettingDto, SocialLinks } from '@woontegra/shared';
+import type { CompanySettingDto, SocialLinks } from '@/shared/types/api';
 
 interface PublicFooterProps {
   companySettings?: CompanySettingDto;

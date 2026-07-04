@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { SiteSettingDto } from '@woontegra/shared';
+import type { SiteSettingDto } from '@/shared/types/api';
 
 interface SeoHeadProps {
   siteSettings?: SiteSettingDto;

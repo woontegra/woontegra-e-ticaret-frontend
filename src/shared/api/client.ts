@@ -1,7 +1,7 @@
 import type {
   ApiErrorResponse,
   ApiResponse,
-} from '@woontegra/shared';
+} from '@/shared/types/api';
 import { useAuthStore } from '@/shared/auth/auth.store';
 
 export class ApiError extends Error {
