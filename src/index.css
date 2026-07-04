@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: 15 23 42;
+    --color-secondary: 100 116 139;
+    --sidebar-width: 14rem;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply min-h-screen bg-white text-slate-900 text-sm;
+  }
+
+  * {
+    @apply border-slate-200;
+  }
+}
+
+@layer components {
+  .admin-page {
+    @apply space-y-3;
+  }
+}
