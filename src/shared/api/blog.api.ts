@@ -10,6 +10,8 @@ export interface BlogPostListParams {
   search?: string;
   status?: PageStatus;
   categoryId?: string;
+  page?: number;
+  limit?: number;
 }
 
 export interface PublicBlogListParams {
@@ -78,6 +80,8 @@ export function listBlogPosts(params: BlogPostListParams = {}) {
   if (params.search) query.set('search', params.search);
   if (params.status) query.set('status', params.status);
   if (params.categoryId) query.set('categoryId', params.categoryId);
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
 
   const suffix = query.toString() ? `?${query.toString()}` : '';
   return apiClient<BlogPostListResult>(`/api/admin/blog/posts${suffix}`);

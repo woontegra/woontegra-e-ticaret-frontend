@@ -9,6 +9,7 @@ import {
   resolveSeoDescription,
   resolveSeoTitle,
 } from '@/shared/lib/seo-meta';
+import { isInitialQueryLoading } from '@/shared/lib/query-client';
 import { useLocation } from 'react-router-dom';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
 
@@ -17,6 +18,12 @@ export function StorefrontIndexPage() {
   const siteQuery = usePublicSiteSettings();
   const { seoSettings } = usePageSeo();
   const layoutQuery = usePublicHomeLayout();
+
+  const showSkeleton = isInitialQueryLoading(
+    layoutQuery.isLoading,
+    layoutQuery.isFetching,
+    layoutQuery.data !== undefined,
+  );
 
   const hasPublishedBlocks =
     layoutQuery.isSuccess &&
@@ -37,7 +44,7 @@ export function StorefrontIndexPage() {
           siteQuery.data,
         )}
       />
-      {layoutQuery.isPending ? (
+      {showSkeleton ? (
         <HomeLayoutSkeleton />
       ) : hasPublishedBlocks ? (
         <HomeLayoutRenderer blocks={layoutQuery.data!.blocks} />

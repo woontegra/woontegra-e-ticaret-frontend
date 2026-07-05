@@ -1,5 +1,7 @@
 import type { FilterableAttributeDto, PublicProductCategoryDto } from '@/shared/types/api';
+import { uiLabel } from '@/shared/lib/storefront-ui';
 import type { ProductListingParams } from '@/storefront/hooks/useProductListingParams';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 
 interface BrandOption {
   id: string;
@@ -27,6 +29,16 @@ export function ProductListingFilters({
   lockCategory,
   lockBrand,
 }: ProductListingFiltersProps) {
+  const ui = useStorefrontUi();
+  const catalogSearchLabel = uiLabel(ui, 'catalogSearchLabel');
+  const catalogSearchPlaceholder = uiLabel(ui, 'catalogSearchPlaceholder');
+  const catalogCategoryLabel = uiLabel(ui, 'catalogCategoryLabel');
+  const catalogAllOption = uiLabel(ui, 'catalogAllOption');
+  const catalogBrandLabel = uiLabel(ui, 'catalogBrandLabel');
+  const catalogPriceRangeLabel = uiLabel(ui, 'catalogPriceRangeLabel');
+  const catalogPriceMin = uiLabel(ui, 'catalogPriceMin');
+  const catalogPriceMax = uiLabel(ui, 'catalogPriceMax');
+
   const toggleAttrValue = (valueId: string, attributeId: string) => {
     const attribute = filterAttributes.find((item) => item.id === attributeId);
     const siblingIds = new Set(attribute?.values.map((item) => item.id));
@@ -43,30 +55,32 @@ export function ProductListingFilters({
 
   return (
     <div className="space-y-6">
-      <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">
-          Ara
-        </label>
-        <input
-          type="search"
-          value={params.search}
-          onChange={(event) => onChange({ search: event.target.value })}
-          placeholder="Ürün ara…"
-          className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
-        />
-      </div>
-
-      {!lockCategory ? (
+      {catalogSearchLabel ? (
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">
-            Kategori
+            {catalogSearchLabel}
+          </label>
+          <input
+            type="search"
+            value={params.search}
+            onChange={(event) => onChange({ search: event.target.value })}
+            placeholder={catalogSearchPlaceholder ?? ''}
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+          />
+        </div>
+      ) : null}
+
+      {!lockCategory && catalogCategoryLabel ? (
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            {catalogCategoryLabel}
           </label>
           <select
             value={params.category}
             onChange={(event) => onChange({ category: event.target.value })}
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
           >
-            <option value="">Tümü</option>
+            {catalogAllOption ? <option value="">{catalogAllOption}</option> : null}
             {categories.map((category) => (
               <option key={category.id} value={category.slug}>
                 {category.name}
@@ -79,17 +93,17 @@ export function ProductListingFilters({
         </div>
       ) : null}
 
-      {!lockBrand ? (
+      {!lockBrand && catalogBrandLabel ? (
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">
-            Marka
+            {catalogBrandLabel}
           </label>
           <select
             value={params.brand}
             onChange={(event) => onChange({ brand: event.target.value })}
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
           >
-            <option value="">Tümü</option>
+            {catalogAllOption ? <option value="">{catalogAllOption}</option> : null}
             {brands.map((brand) => (
               <option key={brand.id} value={brand.slug}>
                 {brand.name}
@@ -102,27 +116,37 @@ export function ProductListingFilters({
         </div>
       ) : null}
 
-      <div>
-        <p className="mb-2 text-sm font-medium text-slate-700">Fiyat aralığı</p>
-        <div className="flex gap-2">
-          <input
-            type="number"
-            min={0}
-            placeholder="Min"
-            value={params.minPrice}
-            onChange={(event) => onChange({ minPrice: event.target.value })}
-            className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
-          />
-          <input
-            type="number"
-            min={0}
-            placeholder="Max"
-            value={params.maxPrice}
-            onChange={(event) => onChange({ maxPrice: event.target.value })}
-            className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
-          />
+      {(catalogPriceRangeLabel || catalogPriceMin || catalogPriceMax) && (
+        <div>
+          {catalogPriceRangeLabel ? (
+            <p className="mb-2 text-sm font-medium text-slate-700">
+              {catalogPriceRangeLabel}
+            </p>
+          ) : null}
+          <div className="flex gap-2">
+            {catalogPriceMin ? (
+              <input
+                type="number"
+                min={0}
+                placeholder={catalogPriceMin}
+                value={params.minPrice}
+                onChange={(event) => onChange({ minPrice: event.target.value })}
+                className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+              />
+            ) : null}
+            {catalogPriceMax ? (
+              <input
+                type="number"
+                min={0}
+                placeholder={catalogPriceMax}
+                value={params.maxPrice}
+                onChange={(event) => onChange({ maxPrice: event.target.value })}
+                className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+              />
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
 
       {filterAttributes.map((attribute) => (
         <div key={attribute.id}>

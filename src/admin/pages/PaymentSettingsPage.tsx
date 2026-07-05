@@ -10,13 +10,13 @@ import type {
   PaymentMethodDto,
   PaytrConfig,
 } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import {
   listPaymentMethods,
   PAYMENT_METHOD_DESCRIPTIONS,
   PAYMENT_METHOD_TYPE_LABELS,
   updatePaymentMethod,
 } from '@/shared/api/payment.api';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import {
   Badge,
   Button,
@@ -24,6 +24,7 @@ import {
   CardHeader,
   Input,
   Label,
+  SecretField,
   Textarea,
 } from '@/shared/ui';
 
@@ -33,12 +34,12 @@ function emptyAccount(): BankAccountConfig {
 
 function PaymentMethodSection({ method }: { method: PaymentMethodDto }) {
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const [name, setName] = useState(method.name);
   const [isActive, setIsActive] = useState(method.isActive);
   const [isTestMode, setIsTestMode] = useState(method.isTestMode);
   const [config, setConfig] = useState(method.config);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -50,14 +51,13 @@ function PaymentMethodSection({ method }: { method: PaymentMethodDto }) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'payment-methods'] });
+      queryClient.invalidateQueries({ queryKey: ['public', 'payment-methods'] });
       setErrorMessage(null);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      onSuccess('Ödeme yöntemi kaydedildi.');
     },
     onError: (error) => {
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
+      const message = onError(error, 'Kayıt başarısız');
+      setErrorMessage(message);
     },
   });
 
@@ -252,23 +252,23 @@ function PaymentMethodSection({ method }: { method: PaymentMethodDto }) {
                 }
               />
             </div>
-            <div>
-              <Label>Merchant Key</Label>
-              <Input
-                type="password"
-                value={paytrConfig.merchantKey ?? ''}
-                onChange={(e) =>
-                  setConfig({ ...paytrConfig, merchantKey: e.target.value })
-                }
-              />
-            </div>
+            <SecretField
+              id={`paytr-key-${method.id}`}
+              label="Merchant Key"
+              value={paytrConfig.merchantKey ?? ''}
+              hasSecret={paytrConfig.hasMerchantKey}
+              onChange={(value) =>
+                setConfig({ ...paytrConfig, merchantKey: value })
+              }
+            />
             <div className="md:col-span-2">
-              <Label>Merchant Salt</Label>
-              <Input
-                type="password"
+              <SecretField
+                id={`paytr-salt-${method.id}`}
+                label="Merchant Salt"
                 value={paytrConfig.merchantSalt ?? ''}
-                onChange={(e) =>
-                  setConfig({ ...paytrConfig, merchantSalt: e.target.value })
+                hasSecret={paytrConfig.hasMerchantSalt}
+                onChange={(value) =>
+                  setConfig({ ...paytrConfig, merchantSalt: value })
                 }
               />
             </div>
@@ -277,26 +277,24 @@ function PaymentMethodSection({ method }: { method: PaymentMethodDto }) {
 
         {method.type === 'IYZICO' ? (
           <div className="grid gap-3 md:grid-cols-2">
-            <div>
-              <Label>API Key</Label>
-              <Input
-                type="password"
-                value={iyzicoConfig.apiKey ?? ''}
-                onChange={(e) =>
-                  setConfig({ ...iyzicoConfig, apiKey: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Secret Key</Label>
-              <Input
-                type="password"
-                value={iyzicoConfig.secretKey ?? ''}
-                onChange={(e) =>
-                  setConfig({ ...iyzicoConfig, secretKey: e.target.value })
-                }
-              />
-            </div>
+            <SecretField
+              id={`iyzico-key-${method.id}`}
+              label="API Key"
+              value={iyzicoConfig.apiKey ?? ''}
+              hasSecret={iyzicoConfig.hasApiKey}
+              onChange={(value) =>
+                setConfig({ ...iyzicoConfig, apiKey: value })
+              }
+            />
+            <SecretField
+              id={`iyzico-secret-${method.id}`}
+              label="Secret Key"
+              value={iyzicoConfig.secretKey ?? ''}
+              hasSecret={iyzicoConfig.hasSecretKey}
+              onChange={(value) =>
+                setConfig({ ...iyzicoConfig, secretKey: value })
+              }
+            />
             <div className="md:col-span-2">
               <Label>Base URL</Label>
               <Input
@@ -330,9 +328,6 @@ function PaymentMethodSection({ method }: { method: PaymentMethodDto }) {
 
       {errorMessage ? (
         <p className="mt-3 text-sm text-red-600">{errorMessage}</p>
-      ) : null}
-      {saved ? (
-        <p className="mt-3 text-sm text-green-600">Kaydedildi.</p>
       ) : null}
 
       <div className="mt-4 flex justify-end">

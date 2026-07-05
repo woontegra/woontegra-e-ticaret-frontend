@@ -10,12 +10,17 @@ import {
   resolveSeoTitle,
 } from '@/shared/lib/seo-meta';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
+import { uiLabel, uiLabelFormat } from '@/shared/lib/storefront-ui';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 
 export function BrandDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const siteQuery = usePublicSiteSettings();
   const { seoSettings } = usePageSeo();
+  const ui = useStorefrontUi();
+  const notFoundMessage = uiLabel(ui, 'brandNotFound');
+  const backLink = uiLabel(ui, 'productListBackLink');
 
   const brandQuery = useQuery({
     queryKey: ['public', 'brands', slug],
@@ -35,15 +40,27 @@ export function BrandDetailPage() {
   }
 
   if (brandQuery.isError || !brand) {
+    if (!notFoundMessage && !backLink) {
+      return null;
+    }
+
     return (
       <div className="py-16 text-center">
-        <p className="text-sm text-theme-muted">Marka bulunamadı.</p>
-        <Link to="/urunler" className="mt-4 inline-block text-sm hover:underline">
-          ← Ürünlere dön
-        </Link>
+        {notFoundMessage ? (
+          <p className="text-sm text-theme-muted">{notFoundMessage}</p>
+        ) : null}
+        {backLink ? (
+          <Link to="/urunler" className="mt-4 inline-block text-sm hover:underline">
+            {backLink}
+          </Link>
+        ) : null}
       </div>
     );
   }
+
+  const productCountText = uiLabelFormat(ui, 'catalogProductCountSuffix', {
+    count: brand.productCount,
+  });
 
   return (
     <>
@@ -82,9 +99,9 @@ export function BrandDetailPage() {
             {brand.description ? (
               <p className="mt-1 text-theme-muted">{brand.description}</p>
             ) : null}
-            <p className="mt-1 text-sm text-theme-muted">
-              {brand.productCount} ürün
-            </p>
+            {productCountText ? (
+              <p className="mt-1 text-sm text-theme-muted">{productCountText}</p>
+            ) : null}
           </div>
         </div>
 

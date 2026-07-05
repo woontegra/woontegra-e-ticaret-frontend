@@ -1,11 +1,16 @@
-export const USER_ROLES = [
-  'SUPER_ADMIN',
-  'ADMIN',
-  'EDITOR',
-  'STAFF',
-] as const;
+import { useAuthStore } from './auth.store';
 
-export type UserRole = (typeof USER_ROLES)[number];
+export type UserRole =
+  | 'SUPER_ADMIN'
+  | 'ADMIN'
+  | 'EDITOR'
+  | 'STAFF';
+
+export const ROLE_SETTINGS: UserRole[] = ['SUPER_ADMIN', 'ADMIN'];
+export const ROLE_CONTENT: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'EDITOR'];
+export const ROLE_OPERATIONS: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'STAFF'];
+export const ROLE_USER_MANAGERS: UserRole[] = ['SUPER_ADMIN', 'ADMIN'];
+export const ROLE_AUDIT_VIEWERS: UserRole[] = ['SUPER_ADMIN', 'ADMIN'];
 
 export const USER_ROLE_LABELS: Record<UserRole, string> = {
   SUPER_ADMIN: 'Süper Admin',
@@ -14,38 +19,29 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
   STAFF: 'Personel',
 };
 
-export const ROLE_GROUPS = {
-  settings: ['SUPER_ADMIN', 'ADMIN'],
-  content: ['SUPER_ADMIN', 'ADMIN', 'EDITOR'],
-  operations: ['SUPER_ADMIN', 'ADMIN', 'STAFF'],
-  panel: ['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF'],
-  userManagers: ['SUPER_ADMIN', 'ADMIN'],
-  auditViewers: ['SUPER_ADMIN', 'ADMIN'],
-} as const satisfies Record<string, readonly UserRole[]>;
-
-export function canManageUsers(role?: string | null): boolean {
-  return role === 'SUPER_ADMIN' || role === 'ADMIN';
+export function canManageUsers(role: string | undefined): boolean {
+  return hasAnyRole(role, ROLE_USER_MANAGERS);
 }
 
-export function canViewUsers(role?: string | null): boolean {
-  return role === 'SUPER_ADMIN' || role === 'ADMIN';
-}
-
-export function assignableRoles(actorRole?: string | null): UserRole[] {
-  if (actorRole === 'SUPER_ADMIN') return [...USER_ROLES];
-  if (actorRole === 'ADMIN') return ['ADMIN', 'EDITOR', 'STAFF'];
+export function assignableRoles(actorRole?: string): UserRole[] {
+  if (actorRole === 'SUPER_ADMIN') {
+    return ['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF'];
+  }
+  if (actorRole === 'ADMIN') {
+    return ['ADMIN', 'EDITOR', 'STAFF'];
+  }
   return [];
 }
 
 export const AUDIT_ACTION_LABELS: Record<string, string> = {
-  USER_LOGIN: 'Kullanıcı girişi',
+  USER_LOGIN: 'Giriş',
   PRODUCT_CREATE: 'Ürün oluşturma',
   PRODUCT_UPDATE: 'Ürün güncelleme',
   PRODUCT_DELETE: 'Ürün silme',
   PAGE_PUBLISH: 'Sayfa yayınlama',
-  PAGE_UNPUBLISH: 'Sayfa yayından kaldırma',
+  PAGE_UNPUBLISH: 'Sayfa taslağa alma',
   BLOG_PUBLISH: 'Blog yayınlama',
-  BLOG_UNPUBLISH: 'Blog yayından kaldırma',
+  BLOG_UNPUBLISH: 'Blog taslağa alma',
   THEME_UPDATE: 'Tema güncelleme',
   HEADER_UPDATE: 'Header güncelleme',
   SITE_SETTING_UPDATE: 'Site ayarı güncelleme',
@@ -58,13 +54,32 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
 
 export const AUDIT_MODULE_LABELS: Record<string, string> = {
   auth: 'Kimlik doğrulama',
-  catalog: 'Katalog',
+  users: 'Kullanıcılar',
+  products: 'Ürünler',
   pages: 'Sayfalar',
   blog: 'Blog',
   theme: 'Tema',
+  header: 'Header',
   settings: 'Ayarlar',
-  commerce: 'Siparişler',
+  orders: 'Siparişler',
   mail: 'Mail',
   payment: 'Ödeme',
   shipping: 'Kargo',
 };
+
+export function hasAnyRole(
+  role: string | undefined,
+  allowed: readonly string[],
+): boolean {
+  if (!role) return false;
+  return allowed.includes(role);
+}
+
+export function useUserRole(): UserRole | undefined {
+  return useAuthStore((state) => state.user?.role as UserRole | undefined);
+}
+
+export function useHasRole(allowed: readonly UserRole[]): boolean {
+  const role = useUserRole();
+  return hasAnyRole(role, allowed);
+}

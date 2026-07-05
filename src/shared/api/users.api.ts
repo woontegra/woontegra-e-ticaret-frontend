@@ -21,6 +21,8 @@ export interface ListUsersParams {
   search?: string;
   role?: string;
   isActive?: boolean;
+  page?: number;
+  limit?: number;
 }
 
 export function listUsers(params: ListUsersParams = {}) {
@@ -31,10 +33,14 @@ export function listUsers(params: ListUsersParams = {}) {
   if (params.isActive !== undefined) {
     query.set('isActive', String(params.isActive));
   }
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
 
   const qs = query.toString();
 
-  return apiClient<AuthUser[]>(`/api/users${qs ? `?${qs}` : ''}`);
+  return apiClient<{ items: AuthUser[]; total: number }>(
+    `/api/users${qs ? `?${qs}` : ''}`,
+  );
 }
 
 export function createUser(payload: CreateUserPayload) {

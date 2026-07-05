@@ -1,5 +1,6 @@
 import type { PublicPageBlockDto } from '@/shared/types/api';
 import { parseBlockContent } from '@/shared/lib/block-model';
+import { LazyImage } from '@/shared/ui/LazyImage';
 import { BlockSectionWrapper } from '../BlockSectionWrapper';
 import { getBlockHeadline } from '../SectionHeading';
 
@@ -34,7 +35,7 @@ export function HeroBlock({ block }: BlockComponentProps) {
           ) : null}
         </div>
         {content.imageUrl ? (
-          <img
+          <LazyImage
             src={content.imageUrl}
             alt={headline ?? ''}
             className="aspect-[4/3] w-full rounded-lg object-cover"

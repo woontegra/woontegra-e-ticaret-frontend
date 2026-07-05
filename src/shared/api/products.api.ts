@@ -1,5 +1,6 @@
 import type {
   BrandDto,
+  DeliveryMode,
   FilterableAttributeDto,
   GenerateVariantsResultDto,
   ProductAttributeAssignmentDto,
@@ -35,6 +36,15 @@ export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
   PASSIVE: 'Pasif',
 };
 
+export const DELIVERY_MODE_LABELS: Record<DeliveryMode, string> = {
+  NONE: 'Yok',
+  FREE_DOWNLOAD: 'Ücretsiz indirme',
+  PAID_DOWNLOAD: 'Ücretli indirme',
+  LICENSED_DOWNLOAD: 'Lisanslı indirme',
+  SAAS: 'SaaS / Abonelik',
+  QUOTE_ONLY: 'Teklif / Hizmet',
+};
+
 export function slugifyClient(text: string): string {
   return text
     .toLowerCase()
@@ -45,8 +55,26 @@ export function slugifyClient(text: string): string {
 }
 
 // Categories
-export function listProductCategories() {
-  return apiClient<ProductCategoryDto[]>('/api/admin/product-categories');
+export interface ProductCategoryListParams {
+  search?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export function listProductCategories(params: ProductCategoryListParams = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.isActive !== undefined) {
+    query.set('isActive', String(params.isActive));
+  }
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return apiClient<PublicCatalogListResult<ProductCategoryDto>>(
+    `/api/admin/product-categories${suffix}`,
+  );
 }
 
 export function getProductCategory(id: string) {
@@ -77,8 +105,24 @@ export function deleteProductCategory(id: string) {
 }
 
 // Brands
-export function listBrands() {
-  return apiClient<BrandDto[]>('/api/admin/brands');
+export interface BrandListParams {
+  search?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export function listBrands(params: BrandListParams = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.isActive !== undefined) {
+    query.set('isActive', String(params.isActive));
+  }
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return apiClient<PublicCatalogListResult<BrandDto>>(`/api/admin/brands${suffix}`);
 }
 
 export function getBrand(id: string) {
@@ -112,6 +156,8 @@ export interface ListProductsParams {
   categoryId?: string;
   brandId?: string;
   productKind?: ProductKind;
+  deliveryMode?: DeliveryMode;
+  licenseRequired?: boolean;
   page?: number;
   limit?: number;
 }
@@ -123,6 +169,10 @@ export function listProducts(params: ListProductsParams = {}) {
   if (params.categoryId) query.set('categoryId', params.categoryId);
   if (params.brandId) query.set('brandId', params.brandId);
   if (params.productKind) query.set('productKind', params.productKind);
+  if (params.deliveryMode) query.set('deliveryMode', params.deliveryMode);
+  if (params.licenseRequired !== undefined) {
+    query.set('licenseRequired', String(params.licenseRequired));
+  }
   if (params.page) query.set('page', String(params.page));
   if (params.limit) query.set('limit', String(params.limit));
 
@@ -221,7 +271,7 @@ export function getProductPublicPath(product: {
   productKind: ProductKind;
 }): string {
   return product.productKind === 'SOFTWARE'
-    ? `/yazilim/${product.slug}`
+    ? `/yazilimlar/${product.slug}`
     : `/urun/${product.slug}`;
 }
 

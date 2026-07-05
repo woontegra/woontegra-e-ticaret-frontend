@@ -88,6 +88,8 @@ export function createFormDefinition(input: {
   name: string;
   key: string;
   fields: FormDefinitionDto['fields'];
+  successMessage?: string | null;
+  submitButtonLabel?: string | null;
   isActive?: boolean;
 }) {
   return apiClient<FormDefinitionDto>('/api/admin/form-definitions', {
@@ -102,6 +104,8 @@ export function updateFormDefinition(
     name: string;
     key: string;
     fields: FormDefinitionDto['fields'];
+    successMessage: string | null;
+    submitButtonLabel: string | null;
     isActive: boolean;
   }>,
 ) {

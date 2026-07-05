@@ -43,7 +43,7 @@ export function ProductGridBlock({ block }: BlockComponentProps) {
       {productsQuery.isPending ? (
         <CatalogGridSkeleton columns={columns} count={Math.min(limit, 8)} />
       ) : products.length === 0 ? (
-        <BlockEmptyState message="Henüz gösterilecek ürün yok." />
+        <BlockEmptyState messageKey="emptyProducts" />
       ) : (
         <div
           className="grid w-full gap-4"

@@ -86,6 +86,12 @@ export function updateOrderShipment(
   });
 }
 
+export function retryOrderDigitalDelivery(id: string) {
+  return apiClient<OrderDto>(`/api/admin/orders/${id}/retry-digital-delivery`, {
+    method: 'POST',
+  });
+}
+
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING: 'Beklemede',
   CONFIRMED: 'Onaylandı',

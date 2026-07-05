@@ -1,15 +1,19 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import type {
   CompanySettingDto,
+  ContactLabels,
   PageDto,
   SeoSettingPublicDto,
   SiteSettingDto,
 } from '@/shared/types/api';
+import { uiLabel } from '@/shared/lib/storefront-ui';
 import { SeoHead } from '@/storefront/components/SeoHead';
 import { StorefrontPageHeading } from '@/storefront/components/StorefrontPageHeading';
 import { ContactForm } from '@/storefront/components/ContactForm';
+import { ContactPageSkeleton } from '@/storefront/components/StorefrontSkeletons';
 import { useOptionalPublicPage } from '@/storefront/hooks/useOptionalPublicPage';
 import { usePageSeo } from '@/storefront/hooks/usePageSeo';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 import {
   buildCanonicalUrl,
   resolveSeoDescription,
@@ -20,8 +24,17 @@ import {
   usePublicSiteSettings,
 } from '@/storefront/hooks/usePublicSettings';
 
+function getContactLabel(
+  labels: ContactLabels | undefined,
+  key: keyof ContactLabels,
+): string | undefined {
+  const value = labels?.[key];
+  return value?.trim() ? value.trim() : undefined;
+}
+
 export function ContactPage() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const siteQuery = usePublicSiteSettings();
   const companyQuery = usePublicCompanySettings();
   const { seoSettings } = usePageSeo();
@@ -59,8 +72,12 @@ export function ContactPage() {
       <ContactContent
         company={companyQuery.data}
         cmsPage={cmsPage}
+        cmsLoading={cmsQuery.isLoading && !cmsPage}
+        companyLoading={companyQuery.isLoading && !companyQuery.data}
         seoSettings={seoSettings}
         siteSettings={siteQuery.data}
+        initialKonu={searchParams.get('konu') ?? undefined}
+        initialMesaj={searchParams.get('mesaj') ?? undefined}
       />
     </>
   );
@@ -69,14 +86,30 @@ export function ContactPage() {
 function ContactContent({
   company,
   cmsPage,
+  cmsLoading,
+  companyLoading,
   seoSettings,
   siteSettings,
+  initialKonu,
+  initialMesaj,
 }: {
   company?: CompanySettingDto;
   cmsPage?: PageDto | null;
+  cmsLoading?: boolean;
+  companyLoading?: boolean;
   seoSettings?: SeoSettingPublicDto;
   siteSettings?: SiteSettingDto;
+  initialKonu?: string;
+  initialMesaj?: string;
 }) {
+  const ui = useStorefrontUi();
+  const backLink = uiLabel(ui, 'contactBackLink') ?? uiLabel(ui, 'notFoundHomeLink');
+  const labels = company?.contactLabels;
+
+  if (cmsLoading || companyLoading) {
+    return <ContactPageSkeleton />;
+  }
+
   return (
     <div className="mx-auto max-w-4xl">
       <StorefrontPageHeading
@@ -88,9 +121,12 @@ function ContactContent({
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px]">
         <div className="theme-card p-4">
           <ContactForm
-            formKey="CONTACT_FORM"
-            source="contact_page"
+            formKey={company?.contactFormKey}
             description={cmsPage?.excerpt ?? undefined}
+            initialValues={{
+              ...(initialKonu ? { konu: initialKonu } : {}),
+              ...(initialMesaj ? { mesaj: initialMesaj } : {}),
+            }}
           />
         </div>
 
@@ -102,19 +138,22 @@ function ContactContent({
             company?.workingHours) && (
             <div className="theme-card p-4">
               <dl className="space-y-2 text-sm">
-                <ContactItem label="Firma" value={company?.companyName} />
                 <ContactItem
-                  label="Telefon"
+                  label={getContactLabel(labels, 'company')}
+                  value={company?.companyName}
+                />
+                <ContactItem
+                  label={getContactLabel(labels, 'phone')}
                   value={company?.phone}
                   href={company?.phone ? `tel:${company.phone}` : undefined}
                 />
                 <ContactItem
-                  label="E-posta"
+                  label={getContactLabel(labels, 'email')}
                   value={company?.email}
                   href={company?.email ? `mailto:${company.email}` : undefined}
                 />
                 <ContactItem
-                  label="Destek"
+                  label={getContactLabel(labels, 'support')}
                   value={company?.supportEmail}
                   href={
                     company?.supportEmail
@@ -123,7 +162,7 @@ function ContactContent({
                   }
                 />
                 <ContactItem
-                  label="Çalışma saatleri"
+                  label={getContactLabel(labels, 'workingHours')}
                   value={company?.workingHours}
                 />
               </dl>
@@ -145,11 +184,13 @@ function ContactContent({
         </aside>
       </div>
 
-      <p className="mt-6 text-sm">
-        <Link to="/" className="theme-link">
-          ← Ana sayfa
-        </Link>
-      </p>
+      {backLink ? (
+        <p className="mt-6 text-sm">
+          <Link to="/" className="theme-link">
+            {backLink}
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -159,11 +200,11 @@ function ContactItem({
   value,
   href,
 }: {
-  label: string;
+  label?: string;
   value?: string;
   href?: string;
 }) {
-  if (!value) return null;
+  if (!label || !value) return null;
 
   return (
     <div>

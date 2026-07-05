@@ -34,6 +34,9 @@ export interface ParsedBlockContent {
   brandLogos?: BlockBrandLogoItem[];
   formKey?: string;
   campaignId?: string;
+  emailPlaceholder?: string;
+  buttonLabel?: string;
+  successMessage?: string;
 }
 
 export interface BlockSlideItem {
@@ -212,6 +215,9 @@ export function parseBlockContent(
     brandLogos: parseObjectArray(raw.brandLogos, parseBrandLogoItem),
     formKey: getString(raw.formKey),
     campaignId: getString(raw.campaignId),
+    emailPlaceholder: getString(raw.emailPlaceholder),
+    buttonLabel: getString(raw.buttonLabel),
+    successMessage: getString(raw.successMessage),
   };
 }
 
@@ -240,62 +246,65 @@ export const DEFAULT_BLOCK_CONTENT: Partial<
   Record<PageBlockType, Record<string, unknown>>
 > = {
   HERO: {
-    headline: 'Yeni sezon koleksiyonu',
-    subheadline: 'Özenle seçilmiş ürünlerle tanışın',
-    ctaLabel: 'Alışverişe başla',
-    ctaUrl: '/products',
+    headline: '',
+    subheadline: '',
+    ctaLabel: '',
+    ctaUrl: '',
   },
   HERO_SLIDER: {
-    headline: 'Slider başlığı',
-    subheadline: 'Alt başlık metni',
+    headline: '',
+    subheadline: '',
   },
   TEXT: {
-    body: 'Metin bloğu içeriği buraya yazılır.',
+    body: '',
   },
   TEXT_IMAGE: {
-    headline: 'Başlık',
-    description: 'Metin ve görsel bloğu açıklaması.',
+    headline: '',
+    description: '',
   },
   IMAGE_BANNER: {
-    headline: 'Kampanya banner',
-    linkUrl: '/products',
+    headline: '',
+    linkUrl: '',
   },
   PRODUCT_GRID: {
-    headline: 'Öne çıkan ürünler',
-    description: 'En çok tercih edilen ürünlerimiz',
+    headline: '',
+    description: '',
   },
   PRODUCT_CAROUSEL: {
-    headline: 'Yeni gelenler',
-    description: 'Son eklenen ürünler',
+    headline: '',
+    description: '',
   },
   CATEGORY_GRID: {
-    headline: 'Kategoriler',
-    description: 'Koleksiyonlarımızı keşfedin',
+    headline: '',
+    description: '',
   },
   BLOG_GRID: {
-    headline: 'Blog',
-    description: 'Son yazılarımız',
+    headline: '',
+    description: '',
   },
   TRUST_BADGES: {
-    headline: 'Güvenle alışveriş yapın',
+    headline: '',
   },
   FAQ: {
-    headline: 'Sık sorulan sorular',
+    headline: '',
   },
   CONTACT_FORM: {
-    headline: 'Bize ulaşın',
-    description: 'Sorularınız için formu doldurun.',
+    headline: '',
+    description: '',
     formKey: '',
   },
   BRAND_LOGOS: {
-    headline: 'Markalarımız',
+    headline: '',
   },
   TESTIMONIALS: {
-    headline: 'Müşteri yorumları',
+    headline: '',
   },
   NEWSLETTER: {
-    headline: 'Bültenimize abone olun',
-    description: 'Kampanya ve yeniliklerden haberdar olun.',
+    headline: '',
+    description: '',
+    emailPlaceholder: '',
+    buttonLabel: '',
+    successMessage: '',
   },
   CUSTOM_SPACER: {},
   CAMPAIGN: {

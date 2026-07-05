@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import type { ShippingCarrierDto } from '@/shared/types/api';
@@ -9,13 +9,16 @@ import {
   listShippingCarriers,
   updateShippingCarrier,
 } from '@/shared/api/shipping.api';
+import { AdminPanel } from '@/admin/components/AdminPanel';
 import { ShippingSubNav } from '@/admin/components/ShippingSubNav';
+import { TableQueryState } from '@/admin/components/TableQueryState';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
+  ConfirmDialog,
+  FilterBar,
   Input,
   Label,
   MediaField,
@@ -23,7 +26,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
@@ -33,7 +35,9 @@ export function ShippingCarriersPage() {
   const queryClient = useQueryClient();
   const formModal = useDisclosure();
   const deleteModal = useDisclosure();
+  const { onSuccess, onError } = useAdminMutationFeedback();
 
+  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<ShippingCarrierDto | null>(null);
   const [toDelete, setToDelete] = useState<ShippingCarrierDto | null>(null);
   const [form, setForm] = useState({
@@ -48,6 +52,15 @@ export function ShippingCarriersPage() {
     queryKey: ['admin', 'shipping-carriers'],
     queryFn: listShippingCarriers,
   });
+
+  const filteredCarriers = useMemo(() => {
+    const items = carriersQuery.data ?? [];
+    if (!search.trim()) return items;
+    const q = search.trim().toLowerCase();
+    return items.filter((carrier) =>
+      carrier.name.toLowerCase().includes(q),
+    );
+  }, [carriersQuery.data, search]);
 
   useEffect(() => {
     if (selected) {
@@ -105,24 +118,29 @@ export function ShippingCarriersPage() {
       invalidate();
       deleteModal.close();
       setToDelete(null);
+      onSuccess('Kargo firması silindi.');
     },
+    onError: (error) => onError(error, 'Firma silinemedi.'),
   });
 
   return (
     <>
       <ShippingSubNav />
-      <Card padding="sm">
-        <CardHeader
-          title="Kargo firmaları"
-          description="Takip linki şablonunda {trackingNumber} kullanın"
-          action={
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              Yeni firma
-            </Button>
-          }
-        />
-
+      <AdminPanel
+        actions={
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Yeni firma
+          </Button>
+        }
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Firma adı ara…"
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -133,12 +151,14 @@ export function ShippingCarriersPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {carriersQuery.isLoading ? (
-              <TableEmpty colSpan={4} message="Yükleniyor…" />
-            ) : (carriersQuery.data?.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={4} message="Henüz kargo firması yok." />
-            ) : (
-              carriersQuery.data!.map((carrier) => (
+            <TableQueryState
+              colSpan={4}
+              isLoading={carriersQuery.isLoading}
+              isError={carriersQuery.isError}
+              isEmpty={filteredCarriers.length === 0}
+              emptyMessage="Henüz kargo firması yok."
+            >
+              {filteredCarriers.map((carrier) => (
                 <TableRow key={carrier.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -185,11 +205,11 @@ export function ShippingCarriersPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-      </Card>
+      </AdminPanel>
 
       <Modal
         isOpen={formModal.isOpen}
@@ -260,28 +280,19 @@ export function ShippingCarriersPage() {
         </div>
       </Modal>
 
-      <Modal
+      <ConfirmDialog
         isOpen={deleteModal.isOpen}
         onClose={deleteModal.close}
         title="Kargo firmasını sil"
-        size="sm"
-      >
-        <p className="text-sm text-slate-600">
-          &quot;{toDelete?.name}&quot; silinecek. Devam edilsin mi?
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={deleteModal.close}>
-            İptal
-          </Button>
-          <Button
-            variant="danger"
-            disabled={deleteMutation.isPending}
-            onClick={() => deleteMutation.mutate()}
-          >
-            Sil
-          </Button>
-        </div>
-      </Modal>
+        description={
+          toDelete
+            ? `"${toDelete.name}" kalıcı olarak silinecek. Devam edilsin mi?`
+            : 'Bu kargo firması kalıcı olarak silinecek.'
+        }
+        confirmLabel="Sil"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </>
   );
 }

@@ -9,10 +9,13 @@ import {
   listRedirectRules,
   updateRedirectRule,
 } from '@/shared/api/seo.api';
+import { AdminPanel } from '@/admin/components/AdminPanel';
+import { TableQueryState } from '@/admin/components/TableQueryState';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
+import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Button,
-  Card,
-  CardHeader,
+  ConfirmDialog,
   Input,
   Label,
   Modal,
@@ -20,7 +23,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
@@ -35,10 +37,14 @@ const emptyForm = {
 
 export function RedirectRulesPage() {
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<RedirectRuleDto | null>(null);
+  const [toDelete, setToDelete] = useState<RedirectRuleDto | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const deleteModal = useDisclosure();
 
   const rulesQuery = useQuery({
     queryKey: ['admin', 'redirect-rules'],
@@ -71,8 +77,14 @@ export function RedirectRulesPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteRedirectRule,
-    onSuccess: invalidate,
+    mutationFn: () => deleteRedirectRule(toDelete!.id),
+    onSuccess: () => {
+      invalidate();
+      deleteModal.close();
+      setToDelete(null);
+      onSuccess('Yönlendirme kuralı silindi.');
+    },
+    onError: (error) => onError(error, 'Kural silinemedi.'),
   });
 
   const openCreate = () => {
@@ -94,20 +106,18 @@ export function RedirectRulesPage() {
     setModalOpen(true);
   };
 
+  const items = rulesQuery.data ?? [];
+
   return (
     <>
-      <Card padding="sm">
-        <CardHeader
-          title="301 / 302 yönlendirmeler"
-          description="Eski URL'leri yeni adreslere yönlendirin"
-          action={
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="mr-1 h-4 w-4" />
-              Yeni kural
-            </Button>
-          }
-        />
-
+      <AdminPanel
+        actions={
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Yeni kural
+          </Button>
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -119,12 +129,14 @@ export function RedirectRulesPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {rulesQuery.isLoading ? (
-              <TableEmpty colSpan={5} message="Yükleniyor…" />
-            ) : (rulesQuery.data?.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={5} message="Henüz yönlendirme kuralı yok." />
-            ) : (
-              rulesQuery.data!.map((rule) => (
+            <TableQueryState
+              colSpan={5}
+              isLoading={rulesQuery.isLoading}
+              isError={rulesQuery.isError}
+              isEmpty={items.length === 0}
+              emptyMessage="Henüz yönlendirme kuralı yok."
+            >
+              {items.map((rule) => (
                 <TableRow key={rule.id}>
                   <TableCell className="font-mono text-sm">
                     {rule.sourcePath}
@@ -133,9 +145,7 @@ export function RedirectRulesPage() {
                     {rule.targetPath}
                   </TableCell>
                   <TableCell>{rule.statusCode}</TableCell>
-                  <TableCell>
-                    {rule.isActive ? 'Aktif' : 'Pasif'}
-                  </TableCell>
+                  <TableCell>{rule.isActive ? 'Aktif' : 'Pasif'}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button
@@ -149,25 +159,20 @@ export function RedirectRulesPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          if (
-                            window.confirm(
-                              'Bu yönlendirme kuralını silmek istiyor musunuz?',
-                            )
-                          ) {
-                            deleteMutation.mutate(rule.id);
-                          }
+                          setToDelete(rule);
+                          deleteModal.open();
                         }}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 text-red-600" />
                       </Button>
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-      </Card>
+      </AdminPanel>
 
       <Modal
         isOpen={modalOpen}
@@ -239,6 +244,20 @@ export function RedirectRulesPage() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={deleteModal.isOpen}
+        onClose={deleteModal.close}
+        title="Yönlendirme kuralını sil"
+        description={
+          toDelete
+            ? `"${toDelete.sourcePath}" → "${toDelete.targetPath}" kalıcı olarak silinecek.`
+            : 'Bu yönlendirme kuralı kalıcı olarak silinecek.'
+        }
+        confirmLabel="Sil"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </>
   );
 }

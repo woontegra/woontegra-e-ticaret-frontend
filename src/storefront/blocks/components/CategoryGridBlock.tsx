@@ -33,7 +33,7 @@ export function CategoryGridBlock({ block }: BlockComponentProps) {
       {categoriesQuery.isPending ? (
         <CatalogGridSkeleton columns={columns} count={Math.min(limit, 6)} />
       ) : categories.length === 0 ? (
-        <BlockEmptyState message="Henüz gösterilecek kategori yok." />
+        <BlockEmptyState messageKey="emptyCategories" />
       ) : (
         <div
           className="grid w-full gap-4"

@@ -1,4 +1,6 @@
 import type { PublicProductAttributeRowDto } from '@/shared/types/api';
+import { uiLabel } from '@/shared/lib/storefront-ui';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 
 interface ProductAttributesTableProps {
   attributes: PublicProductAttributeRowDto[];
@@ -7,11 +9,14 @@ interface ProductAttributesTableProps {
 export function ProductAttributesTable({
   attributes,
 }: ProductAttributesTableProps) {
-  if (attributes.length === 0) return null;
+  const ui = useStorefrontUi();
+  const productAttributesTitle = uiLabel(ui, 'productAttributesTitle');
+
+  if (attributes.length === 0 || !productAttributesTitle) return null;
 
   return (
     <div className="mt-10">
-      <h2 className="theme-heading text-lg font-semibold">Ürün özellikleri</h2>
+      <h2 className="theme-heading text-lg font-semibold">{productAttributesTitle}</h2>
       <table className="mt-3 w-full text-sm">
         <tbody>
           {attributes.map((row) => (

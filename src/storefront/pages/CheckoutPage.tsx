@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { PaymentMethodPublicDto } from '@/shared/types/api';
+import type { PaymentMethodPublicDto, StorefrontUiLabels } from '@/shared/types/api';
 import { checkout, formatMoney } from '@/shared/api/cart.api';
 import { ApiError } from '@/shared/api/client';
 import {
@@ -19,14 +19,23 @@ import {
   resolveSeoTitle,
 } from '@/shared/lib/seo-meta';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
+import { uiLabel, uiLabelFormat } from '@/shared/lib/storefront-ui';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 import { Button, Input, Label, Textarea } from '@/shared/ui';
 import { cn } from '@/shared/lib/cn';
 
-function getMethodHint(method: PaymentMethodPublicDto): string | null {
+function getMethodHint(
+  method: PaymentMethodPublicDto,
+  ui: StorefrontUiLabels,
+): string | null {
   if (method.type === 'BANK_TRANSFER') {
     const config = method.config as { accounts?: unknown[]; instructions?: string | null };
     if (config.accounts?.length) {
-      return `${config.accounts.length} banka hesabı`;
+      return (
+        uiLabelFormat(ui, 'checkoutBankAccountCount', {
+          count: config.accounts.length,
+        }) ?? null
+      );
     }
   }
   if (method.type === 'CASH_ON_DELIVERY') {
@@ -38,7 +47,7 @@ function getMethodHint(method: PaymentMethodPublicDto): string | null {
     if (config.instructions) return config.instructions;
   }
   if (method.isTestMode && (method.type === 'PAYTR' || method.type === 'IYZICO')) {
-    return 'Test modu aktif';
+    return uiLabel(ui, 'checkoutTestMode') ?? null;
   }
   return null;
 }
@@ -50,6 +59,9 @@ export function CheckoutPage() {
   const { seoSettings } = usePageSeo();
   const cmsQuery = useOptionalPublicPage('odeme');
   const cmsPage = cmsQuery.data;
+  const ui = useStorefrontUi();
+  const cartEmpty = uiLabel(ui, 'cartEmpty');
+  const cartBackLink = uiLabel(ui, 'cartBackLink');
   const { cart, isLoading, invalidate, applyCouponMutation, removeCouponMutation } =
     useCart();
   const [couponCode, setCouponCode] = useState('');
@@ -96,6 +108,11 @@ export function CheckoutPage() {
       }),
     onSuccess: (result) => {
       invalidate();
+      const redirectUrl = result.payment.redirectUrl?.trim();
+      if (redirectUrl) {
+        window.location.assign(redirectUrl);
+        return;
+      }
       navigate(`/siparis-basarili/${result.order.orderNumber}`, {
         replace: true,
         state: result,
@@ -103,7 +120,9 @@ export function CheckoutPage() {
     },
     onError: (error) => {
       setErrorMessage(
-        error instanceof ApiError ? error.message : 'Sipariş oluşturulamadı.',
+        error instanceof ApiError
+          ? error.message
+          : uiLabel(ui, 'checkoutErrorGeneric') ?? null,
       );
     },
   });
@@ -111,7 +130,7 @@ export function CheckoutPage() {
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!form.paymentMethodId) {
-      setErrorMessage('Lütfen bir ödeme yöntemi seçin.');
+      setErrorMessage(uiLabel(ui, 'checkoutPaymentRequired') ?? null);
       return;
     }
     checkoutMutation.mutate();
@@ -127,12 +146,20 @@ export function CheckoutPage() {
   }
 
   if (!cart || cart.items.length === 0) {
+    if (!cartEmpty && !cartBackLink) {
+      return null;
+    }
+
     return (
       <div className="mx-auto max-w-3xl py-16 text-center">
-        <p className="text-sm text-theme-muted">Sepetiniz boş.</p>
-        <Link to="/" className="theme-link mt-4 inline-block text-sm">
-          ← Ana sayfa
-        </Link>
+        {cartEmpty ? (
+          <p className="text-sm text-theme-muted">{cartEmpty}</p>
+        ) : null}
+        {cartBackLink ? (
+          <Link to="/" className="theme-link mt-4 inline-block text-sm">
+            {cartBackLink}
+          </Link>
+        ) : null}
       </div>
     );
   }
@@ -176,11 +203,14 @@ export function CheckoutPage() {
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_300px]">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <section className="space-y-4">
-              <h2 className="text-sm font-semibold text-slate-800">
-                İletişim bilgileri
-              </h2>
+              {uiLabel(ui, 'checkoutContactTitle') ? (
+                <h2 className="text-sm font-semibold text-slate-800">
+                  {uiLabel(ui, 'checkoutContactTitle')}
+                </h2>
+              ) : null}
+              {uiLabel(ui, 'checkoutNameLabel') ? (
               <div>
-                <Label htmlFor="checkout-name">Ad Soyad</Label>
+                <Label htmlFor="checkout-name">{uiLabel(ui, 'checkoutNameLabel')}</Label>
                 <Input
                   id="checkout-name"
                   required
@@ -193,8 +223,10 @@ export function CheckoutPage() {
                   }
                 />
               </div>
+              ) : null}
+              {uiLabel(ui, 'checkoutEmailLabel') ? (
               <div>
-                <Label htmlFor="checkout-email">E-posta</Label>
+                <Label htmlFor="checkout-email">{uiLabel(ui, 'checkoutEmailLabel')}</Label>
                 <Input
                   id="checkout-email"
                   type="email"
@@ -208,8 +240,10 @@ export function CheckoutPage() {
                   }
                 />
               </div>
+              ) : null}
+              {uiLabel(ui, 'checkoutPhoneLabel') ? (
               <div>
-                <Label htmlFor="checkout-phone">Telefon</Label>
+                <Label htmlFor="checkout-phone">{uiLabel(ui, 'checkoutPhoneLabel')}</Label>
                 <Input
                   id="checkout-phone"
                   required
@@ -222,8 +256,10 @@ export function CheckoutPage() {
                   }
                 />
               </div>
+              ) : null}
+              {uiLabel(ui, 'checkoutNoteLabel') ? (
               <div>
-                <Label htmlFor="checkout-note">Sipariş notu (opsiyonel)</Label>
+                <Label htmlFor="checkout-note">{uiLabel(ui, 'checkoutNoteLabel')}</Label>
                 <Textarea
                   id="checkout-note"
                   rows={3}
@@ -233,22 +269,24 @@ export function CheckoutPage() {
                   }
                 />
               </div>
+              ) : null}
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-slate-800">
-                Ödeme yöntemi
-              </h2>
+              {uiLabel(ui, 'checkoutPaymentTitle') ? (
+                <h2 className="text-sm font-semibold text-slate-800">
+                  {uiLabel(ui, 'checkoutPaymentTitle')}
+                </h2>
+              ) : null}
 
-              {activeMethods.length === 0 ? (
+              {activeMethods.length === 0 && uiLabel(ui, 'checkoutNoPaymentMethods') ? (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  Şu anda aktif ödeme yöntemi yok. Lütfen daha sonra tekrar
-                  deneyin.
+                  {uiLabel(ui, 'checkoutNoPaymentMethods')}
                 </p>
-              ) : (
+              ) : activeMethods.length === 0 ? null : (
                 <div className="space-y-2">
                   {activeMethods.map((method) => {
-                    const hint = getMethodHint(method);
+                    const hint = getMethodHint(method, ui);
                     const selected = form.paymentMethodId === method.id;
                     return (
                       <label
@@ -278,7 +316,9 @@ export function CheckoutPage() {
                           </span>
                           <span className="block text-xs text-slate-500">
                             {PAYMENT_METHOD_TYPE_LABELS[method.type]}
-                            {method.isTestMode ? ' · Test modu' : ''}
+                            {method.isTestMode && uiLabel(ui, 'checkoutTestMode')
+                              ? ` · ${uiLabel(ui, 'checkoutTestMode')}`
+                              : ''}
                           </span>
                           {hint ? (
                             <span className="mt-1 block text-sm text-slate-600">
@@ -306,7 +346,11 @@ export function CheckoutPage() {
                   if (!config.accounts?.length) return null;
                   return (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-                  <p className="font-medium text-slate-800">Banka hesapları</p>
+                  {uiLabel(ui, 'checkoutBankAccountsTitle') ? (
+                    <p className="font-medium text-slate-800">
+                      {uiLabel(ui, 'checkoutBankAccountsTitle')}
+                    </p>
+                  ) : null}
                   <ul className="mt-2 space-y-2">
                     {config.accounts.map((account, index) => (
                       <li key={index}>
@@ -338,13 +382,15 @@ export function CheckoutPage() {
               }
             >
               {checkoutMutation.isPending
-                ? 'Sipariş oluşturuluyor…'
-                : 'Siparişi tamamla'}
+                ? uiLabel(ui, 'checkoutSubmitPending')
+                : uiLabel(ui, 'checkoutSubmit')}
             </Button>
           </form>
 
           <aside className="h-fit rounded-lg border border-slate-200 bg-white p-4">
-            <h2 className="text-sm font-semibold">Sipariş özeti</h2>
+            {uiLabel(ui, 'checkoutOrderSummary') ? (
+              <h2 className="text-sm font-semibold">{uiLabel(ui, 'checkoutOrderSummary')}</h2>
+            ) : null}
             <ul className="mt-3 space-y-2 text-sm">
               {cart.items.map((item) => (
                 <li key={item.id} className="flex justify-between gap-2">
@@ -357,7 +403,9 @@ export function CheckoutPage() {
             </ul>
 
             <div className="mt-4 border-t border-slate-100 pt-3">
-              <Label htmlFor="checkout-coupon">Kupon kodu</Label>
+              {uiLabel(ui, 'checkoutCouponLabel') ? (
+                <Label htmlFor="checkout-coupon">{uiLabel(ui, 'checkoutCouponLabel')}</Label>
+              ) : null}
               {cart.couponCode ? (
                 <div className="mt-2 flex items-center justify-between rounded-md bg-emerald-50 px-3 py-2 text-sm">
                   <span className="font-medium text-emerald-800">
@@ -377,7 +425,7 @@ export function CheckoutPage() {
                       });
                     }}
                   >
-                    Kaldır
+                    {uiLabel(ui, 'checkoutCouponRemove')}
                   </Button>
                 </div>
               ) : (
@@ -385,7 +433,7 @@ export function CheckoutPage() {
                   <Input
                     id="checkout-coupon"
                     value={couponCode}
-                    placeholder="KUPONKODU"
+                    placeholder={uiLabel(ui, 'checkoutCouponPlaceholder') ?? ''}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                   />
                   <Button
@@ -398,20 +446,20 @@ export function CheckoutPage() {
                       setCouponMessage(null);
                       applyCouponMutation.mutate(couponCode.trim(), {
                         onSuccess: () => {
-                          setCouponMessage('Kupon uygulandı.');
+                          setCouponMessage(uiLabel(ui, 'checkoutCouponApplied') ?? null);
                           setCouponCode('');
                         },
                         onError: (error) => {
                           setCouponMessage(
                             error instanceof ApiError
                               ? error.message
-                              : 'Kupon uygulanamadı',
+                              : uiLabel(ui, 'checkoutCouponError') ?? null,
                           );
                         },
                       });
                     }}
                   >
-                    Uygula
+                    {uiLabel(ui, 'checkoutCouponApply')}
                   </Button>
                 </div>
               )}
@@ -421,24 +469,30 @@ export function CheckoutPage() {
             </div>
 
             <dl className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-sm">
+              {uiLabel(ui, 'checkoutSubtotal') ? (
               <div className="flex justify-between">
-                <dt className="text-slate-600">Ara toplam</dt>
+                <dt className="text-slate-600">{uiLabel(ui, 'checkoutSubtotal')}</dt>
                 <dd>{formatMoney(cart.subtotal)}</dd>
               </div>
+              ) : null}
+              {uiLabel(ui, 'checkoutTax') ? (
               <div className="flex justify-between">
-                <dt className="text-slate-600">KDV</dt>
+                <dt className="text-slate-600">{uiLabel(ui, 'checkoutTax')}</dt>
                 <dd>{formatMoney(cart.taxTotal)}</dd>
               </div>
-              {cart.discountTotal > 0 ? (
+              ) : null}
+              {cart.discountTotal > 0 && uiLabel(ui, 'checkoutDiscount') ? (
                 <div className="flex justify-between text-emerald-700">
-                  <dt>İndirim</dt>
+                  <dt>{uiLabel(ui, 'checkoutDiscount')}</dt>
                   <dd>-{formatMoney(cart.discountTotal)}</dd>
                 </div>
               ) : null}
+              {uiLabel(ui, 'checkoutTotal') ? (
               <div className="flex justify-between font-semibold">
-                <dt>Toplam</dt>
+                <dt>{uiLabel(ui, 'checkoutTotal')}</dt>
                 <dd>{formatMoney(cart.grandTotal)}</dd>
               </div>
+              ) : null}
             </dl>
           </aside>
         </div>

@@ -21,7 +21,6 @@ export function ContactFormBlock({ block }: BlockComponentProps) {
       <div className="theme-card mx-auto w-full max-w-lg">
         <ContactForm
           formKey={formKey}
-          source="contact_form_block"
           title={title ?? undefined}
           description={
             typeof content.description === 'string'

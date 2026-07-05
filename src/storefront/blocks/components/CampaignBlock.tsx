@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { parseBlockContent } from '@/shared/lib/block-model';
 import { getPublicCampaign } from '@/shared/api/promotions.api';
 import type { PublicPageBlockDto } from '@/shared/types/api';
+import { LazyImage } from '@/shared/ui/LazyImage';
 import { BlockSectionWrapper } from '../BlockSectionWrapper';
 
 interface BlockComponentProps {
@@ -55,7 +56,7 @@ export function CampaignBlock({ block }: BlockComponentProps) {
         }`}
       >
         {campaign.bannerImageUrl ? (
-          <img
+          <LazyImage
             src={campaign.bannerImageUrl}
             alt={campaign.title}
             className={`w-full object-cover ${isHero ? 'absolute inset-0 h-full' : 'max-h-80'}`}

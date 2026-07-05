@@ -7,21 +7,20 @@ import {
   getContactMessage,
   listContactMessages,
 } from '@/shared/api/contact.api';
+import { AdminPanel } from '@/admin/components/AdminPanel';
 import { ContactSubNav } from '@/admin/components/ContactSubNav';
 import { ContactMessageDetailPanel } from '@/admin/components/ContactMessageDetailPanel';
+import { TableQueryState } from '@/admin/components/TableQueryState';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
   Drawer,
-  Input,
-  Label,
+  FilterBar,
+  Pagination,
   Select,
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
@@ -58,35 +57,30 @@ export function ContactMessagesPage() {
 
   const total = messagesQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const items = messagesQuery.data?.items ?? [];
 
   return (
     <>
       <ContactSubNav />
-      <Card padding="sm">
-        <CardHeader title="İletişim mesajları" description="Public formlardan gelen mesajlar" />
-
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
-          <div>
-            <Label>Ara</Label>
-            <Input
-              value={search}
-              placeholder="Ad, e-posta, konu…"
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-          <div>
-            <Label>Durum</Label>
+      <AdminPanel
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
+            searchPlaceholder="Ad, e-posta, konu…"
+          >
             <Select
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value as ContactMessageStatus | '');
                 setPage(1);
               }}
+              className="h-8 text-xs"
             >
-              <option value="">Tümü</option>
+              <option value="">Tüm durumlar</option>
               {Object.entries(CONTACT_MESSAGE_STATUS_LABELS).map(
                 ([value, label]) => (
                   <option key={value} value={value}>
@@ -95,9 +89,18 @@ export function ContactMessagesPage() {
                 ),
               )}
             </Select>
-          </div>
-        </div>
-
+          </FilterBar>
+        }
+        footer={
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -109,12 +112,14 @@ export function ContactMessagesPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {messagesQuery.isLoading ? (
-              <TableEmpty colSpan={5} message="Yükleniyor…" />
-            ) : (messagesQuery.data?.items.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={5} message="Henüz mesaj yok." />
-            ) : (
-              messagesQuery.data!.items.map((item) => (
+            <TableQueryState
+              colSpan={5}
+              isLoading={messagesQuery.isLoading}
+              isError={messagesQuery.isError}
+              isEmpty={items.length === 0}
+              emptyMessage="Henüz mesaj yok."
+            >
+              {items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="text-slate-500">
                     {new Date(item.createdAt).toLocaleString('tr-TR')}
@@ -141,37 +146,11 @@ export function ContactMessagesPage() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-
-        {totalPages > 1 ? (
-          <div className="mt-4 flex items-center justify-between text-sm">
-            <span className="text-slate-500">
-              Toplam {total} mesaj · Sayfa {page}/{totalPages}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Önceki
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Sonraki
-              </Button>
-            </div>
-          </div>
-        ) : null}
-      </Card>
+      </AdminPanel>
 
       <Drawer
         isOpen={Boolean(drawerId)}

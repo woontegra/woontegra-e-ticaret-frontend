@@ -19,11 +19,7 @@ interface PublicHeaderProps {
   cartItemCount?: number;
 }
 
-function HeaderLogo({
-  siteSettings,
-}: {
-  siteSettings?: SiteSettingDto;
-}) {
+function HeaderLogo({ siteSettings }: { siteSettings?: SiteSettingDto }) {
   const siteName = siteSettings?.siteName;
   const logoUrl = siteSettings?.logoUrl;
 
@@ -55,31 +51,41 @@ function HeaderIcons({
 }) {
   const iconClass =
     'theme-header-link inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-theme-surface';
+  const cartHref = settings.cartUrl?.trim() || '/sepet';
+  const accountHref = settings.accountUrl?.trim();
+  const favoritesHref = settings.favoritesUrl?.trim();
 
   return (
     <div className="flex items-center gap-1">
       {settings.showSearch ? (
-        <button
-          type="button"
-          className={iconClass}
-          aria-label="Ara"
-          onClick={onSearchClick}
-        >
+        <button type="button" className={iconClass} onClick={onSearchClick}>
           <Search className="h-5 w-5" />
         </button>
       ) : null}
-      {settings.showAccountIcon ? (
-        <Link to="/admin/login" className={iconClass} aria-label="Hesabım">
-          <User className="h-5 w-5" />
-        </Link>
+      {settings.showAccountIcon && accountHref ? (
+        accountHref.startsWith('http') ? (
+          <a href={accountHref} className={iconClass}>
+            <User className="h-5 w-5" />
+          </a>
+        ) : (
+          <Link to={accountHref} className={iconClass}>
+            <User className="h-5 w-5" />
+          </Link>
+        )
       ) : null}
-      {settings.showFavoritesIcon ? (
-        <button type="button" className={iconClass} aria-label="Favoriler">
-          <Heart className="h-5 w-5" />
-        </button>
+      {settings.showFavoritesIcon && favoritesHref ? (
+        favoritesHref.startsWith('http') ? (
+          <a href={favoritesHref} className={iconClass}>
+            <Heart className="h-5 w-5" />
+          </a>
+        ) : (
+          <Link to={favoritesHref} className={iconClass}>
+            <Heart className="h-5 w-5" />
+          </Link>
+        )
       ) : null}
       {settings.showCartIcon ? (
-        <Link to="/sepet" className={`${iconClass} relative`} aria-label="Sepet">
+        <Link to={cartHref} className={`${iconClass} relative`}>
           <ShoppingCart className="h-5 w-5" />
           {cartItemCount > 0 ? (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-900 px-1 text-[10px] font-medium text-white">
@@ -95,9 +101,11 @@ function HeaderIcons({
 function HeaderSearchOverlay({
   open,
   onClose,
+  placeholder,
 }: {
   open: boolean;
   onClose: () => void;
+  placeholder?: string | null;
 }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -113,7 +121,7 @@ function HeaderSearchOverlay({
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !placeholder?.trim()) return null;
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -128,7 +136,6 @@ function HeaderSearchOverlay({
       <button
         type="button"
         className="absolute inset-0 bg-black/40"
-        aria-label="Aramayı kapat"
         onClick={onClose}
       />
       <div className="relative mx-auto mt-20 w-full max-w-lg px-4">
@@ -141,7 +148,7 @@ function HeaderSearchOverlay({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Ara…"
+            placeholder={placeholder}
             autoFocus
             className="flex-1 border-0 bg-transparent px-2 py-2 text-sm outline-none"
           />
@@ -149,7 +156,6 @@ function HeaderSearchOverlay({
             type="button"
             onClick={onClose}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
-            aria-label="Kapat"
           >
             <X className="h-5 w-5" />
           </button>
@@ -184,7 +190,11 @@ export function PublicHeader({
     : headerItems;
 
   const showDesktopMenu = headerItems.length > 0;
-  const openSearch = () => setSearchOpen(true);
+  const openSearch = () => {
+    if (headerSettings.searchPlaceholder?.trim()) {
+      setSearchOpen(true);
+    }
+  };
 
   return (
     <>
@@ -224,7 +234,6 @@ export function PublicHeader({
         <nav
           className="theme-container theme-container-padding mx-auto flex w-full items-center px-4 sm:px-6 lg:px-8"
           style={{ minHeight: headerSettings.headerHeight }}
-          aria-label="Ana menü"
         >
           <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-4">
             <div className="flex items-center justify-start gap-4">
@@ -281,7 +290,6 @@ export function PublicHeader({
               <button
                 type="button"
                 className="theme-header-link inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-theme-surface md:hidden"
-                aria-label="Menüyü aç"
                 onClick={() => setMobileOpen(true)}
               >
                 <Menu className="h-5 w-5" />
@@ -296,7 +304,6 @@ export function PublicHeader({
           <button
             type="button"
             className="absolute inset-0 bg-black/40"
-            aria-label="Menüyü kapat"
             onClick={() => setMobileOpen(false)}
           />
           <div className="absolute inset-y-0 right-0 flex w-full max-w-sm flex-col bg-white shadow-xl">
@@ -305,7 +312,6 @@ export function PublicHeader({
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                aria-label="Kapat"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
               >
                 <X className="h-5 w-5" />
@@ -335,7 +341,11 @@ export function PublicHeader({
         </div>
       ) : null}
 
-      <HeaderSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <HeaderSearchOverlay
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        placeholder={headerSettings.searchPlaceholder}
+      />
     </>
   );
 }

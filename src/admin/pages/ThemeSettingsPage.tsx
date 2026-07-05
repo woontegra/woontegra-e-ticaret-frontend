@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ThemeSettingDto } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import { getThemeSettings, updateThemeSettings } from '@/shared/api/theme.api';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import {
   Button,
   Card,
@@ -54,9 +54,9 @@ function ColorField({
 
 export function ThemeSettingsPage() {
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const [tab, setTab] = useState<TabId>('general');
   const [form, setForm] = useState<ThemeSettingDto | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const settingsQuery = useQuery({
@@ -74,16 +74,14 @@ export function ThemeSettingsPage() {
     mutationFn: updateThemeSettings,
     onSuccess: (data) => {
       setForm(data);
-      setMessage('Tema ayarları kaydedildi.');
       setErrorMessage(null);
+      onSuccess('Tema ayarları kaydedildi.');
       queryClient.invalidateQueries({ queryKey: ['admin', 'theme-settings'] });
       queryClient.invalidateQueries({ queryKey: ['public', 'theme-settings'] });
     },
     onError: (error) => {
-      setMessage(null);
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
+      const message = onError(error, 'Kayıt başarısız');
+      setErrorMessage(message);
     },
   });
 
@@ -828,7 +826,6 @@ export function ThemeSettingsPage() {
           <Button type="submit" isLoading={saveMutation.isPending}>
             Kaydet
           </Button>
-          {message ? <p className="text-sm text-green-600">{message}</p> : null}
           {errorMessage ? (
             <p className="text-sm text-red-600">{errorMessage}</p>
           ) : null}

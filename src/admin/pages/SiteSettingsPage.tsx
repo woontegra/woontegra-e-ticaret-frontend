@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { SiteSettingDto } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
+import type { SiteSettingDto, StorefrontUiLabels } from '@/shared/types/api';
 import {
   getAdminSiteSettings,
   updateAdminSiteSettings,
 } from '@/shared/api/settings.api';
+import { STOREFRONT_UI_FIELD_GROUPS } from '@/admin/constants/storefront-ui-fields';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import {
   Button,
   Card,
-  CardHeader,
   Input,
   Label,
   MediaField,
@@ -19,8 +19,8 @@ import {
 
 export function SiteSettingsPage() {
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const [form, setForm] = useState<Partial<SiteSettingDto>>({});
-  const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const settingsQuery = useQuery({
@@ -38,16 +38,14 @@ export function SiteSettingsPage() {
     mutationFn: updateAdminSiteSettings,
     onSuccess: (data) => {
       setForm(data);
-      setMessage('Site bilgileri kaydedildi.');
       setErrorMessage(null);
+      onSuccess('Site bilgileri kaydedildi.');
       queryClient.invalidateQueries({ queryKey: ['admin', 'site-settings'] });
       queryClient.invalidateQueries({ queryKey: ['public', 'site-settings'] });
     },
     onError: (error) => {
-      setMessage(null);
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
+      const message = onError(error, 'Kayıt başarısız');
+      setErrorMessage(message);
     },
   });
 
@@ -63,21 +61,36 @@ export function SiteSettingsPage() {
       logoMediaId: form.logoMediaId,
       faviconMediaId: form.faviconMediaId,
       ogImageMediaId: form.ogImageMediaId,
+      storefrontUi: form.storefrontUi,
     });
+  };
+
+  const updateStorefrontUi = (
+    key: keyof StorefrontUiLabels,
+    value: string,
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      storefrontUi: {
+        ...(prev.storefrontUi ?? {}),
+        [key]: value,
+      },
+    }));
   };
 
   if (settingsQuery.isLoading) {
     return <p className="text-sm text-slate-500">Yükleniyor…</p>;
   }
 
+  if (settingsQuery.isError) {
+    return (
+      <p className="text-sm text-red-600">Site ayarları yüklenemedi.</p>
+    );
+  }
+
   return (
     <Card padding="sm">
-      <CardHeader
-        title="Site Bilgileri"
-        description="Site adı, SEO varsayılanları ve bakım modu"
-      />
-
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3">
         <div className="grid gap-3 md:grid-cols-2">
           <div>
             <Label htmlFor="siteName" required>
@@ -173,6 +186,37 @@ export function SiteSettingsPage() {
           />
         </div>
 
+        <div className="space-y-4 border-t border-slate-100 pt-4">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Vitrin arayüz metinleri
+          </h2>
+          <p className="text-xs text-slate-500">
+            Public sitede görünen sabit metinler. Boş bırakılan alanlar sitede
+            gösterilmez.
+          </p>
+          {STOREFRONT_UI_FIELD_GROUPS.map((group) => (
+            <div key={group.title} className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {group.title}
+              </h3>
+              <div className="grid gap-3 md:grid-cols-2">
+                {group.fields.map((field) => (
+                  <div key={field.key}>
+                    <Label htmlFor={`ui-${field.key}`}>{field.label}</Label>
+                    <Input
+                      id={`ui-${field.key}`}
+                      value={form.storefrontUi?.[field.key] ?? ''}
+                      onChange={(event) =>
+                        updateStorefrontUi(field.key, event.target.value)
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
@@ -188,15 +232,8 @@ export function SiteSettingsPage() {
           Bakım modu aktif
         </label>
 
-        {message ? (
-          <p className="rounded-md bg-emerald-50 px-2 py-1.5 text-xs text-emerald-700">
-            {message}
-          </p>
-        ) : null}
         {errorMessage ? (
-          <p className="rounded-md bg-red-50 px-2 py-1.5 text-xs text-red-700">
-            {errorMessage}
-          </p>
+          <p className="text-xs text-red-600">{errorMessage}</p>
         ) : null}
 
         <Button type="submit" isLoading={saveMutation.isPending}>

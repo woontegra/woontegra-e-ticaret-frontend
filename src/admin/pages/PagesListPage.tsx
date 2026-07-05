@@ -1,40 +1,44 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { PageDto, PageStatus, PageType } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import {
   deletePage,
   listPages,
   PAGE_STATUS_LABELS,
   PAGE_TYPE_LABELS,
 } from '@/shared/api/pages.api';
+import { ListPageShell } from '@/admin/components/ui';
+import { TableQueryState } from '@/admin/components/TableQueryState';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
+  ConfirmDialog,
   FilterBar,
-  Modal,
+  Pagination,
   Select,
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
 } from '@/shared/ui';
 
+const PAGE_SIZE = 20;
+
 export function PagesListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<PageStatus | ''>('');
   const [typeFilter, setTypeFilter] = useState<PageType | ''>('');
+  const [listPage, setListPage] = useState(1);
   const [pageToDelete, setPageToDelete] = useState<PageDto | null>(null);
 
   const deleteModal = useDisclosure();
@@ -44,8 +48,10 @@ export function PagesListPage() {
       search: search || undefined,
       status: statusFilter || undefined,
       pageType: typeFilter || undefined,
+      page: listPage,
+      limit: PAGE_SIZE,
     }),
-    [search, statusFilter, typeFilter],
+    [search, statusFilter, typeFilter, listPage],
   );
 
   const pagesQuery = useQuery({
@@ -53,60 +59,78 @@ export function PagesListPage() {
     queryFn: () => listPages(queryParams),
   });
 
+  const items = pagesQuery.data?.items ?? [];
+  const total = pagesQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => {
+    setListPage(1);
+  }, [search, statusFilter, typeFilter]);
+
   const deleteMutation = useMutation({
     mutationFn: deletePage,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'pages'] });
+      queryClient.invalidateQueries({ queryKey: ['public', 'pages'] });
       deleteModal.close();
       setPageToDelete(null);
+      onSuccess('Sayfa silindi.');
     },
+    onError: (error) => onError(error, 'Sayfa silinemedi.'),
   });
 
   return (
     <>
-      <Card padding="sm">
-        <CardHeader
-          title="Sayfalar"
-          description="CMS sayfalarını yönetin"
-          action={
-            <Button size="sm" onClick={() => navigate('/admin/content/pages/new')}>
-              <Plus className="h-4 w-4" />
-              Yeni sayfa
-            </Button>
-          }
-        />
-
-        <FilterBar
-          className="mb-4"
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Başlık veya slug ara…"
-        >
-          <Select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as PageStatus | '')
-            }
-            className="w-36"
+      <ListPageShell
+        title="Sayfalar"
+        description="Statik sayfaları ve içeriklerini yönetin"
+        actions={
+          <Button size="sm" onClick={() => navigate('/admin/content/pages/new')}>
+            <Plus className="h-4 w-4" />
+            Yeni sayfa
+          </Button>
+        }
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Başlık veya slug ara…"
           >
-            <option value="">Tüm durumlar</option>
-            <option value="DRAFT">Taslak</option>
-            <option value="PUBLISHED">Yayında</option>
-          </Select>
-          <Select
-            value={typeFilter}
-            onChange={(event) =>
-              setTypeFilter(event.target.value as PageType | '')
-            }
-            className="w-36"
-          >
-            <option value="">Tüm türler</option>
-            <option value="STANDARD">Standart</option>
-            <option value="LEGAL">Yasal</option>
-            <option value="LANDING">Landing</option>
-          </Select>
-        </FilterBar>
-
+            <Select
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as PageStatus | '')
+              }
+              className="h-8 text-xs"
+            >
+              <option value="">Tüm durumlar</option>
+              <option value="DRAFT">Taslak</option>
+              <option value="PUBLISHED">Yayında</option>
+            </Select>
+            <Select
+              value={typeFilter}
+              onChange={(event) =>
+                setTypeFilter(event.target.value as PageType | '')
+              }
+              className="h-8 text-xs"
+            >
+              <option value="">Tüm türler</option>
+              <option value="STANDARD">Standart</option>
+              <option value="LEGAL">Yasal</option>
+              <option value="LANDING">Landing</option>
+            </Select>
+          </FilterBar>
+        }
+        footer={
+          <Pagination
+            page={listPage}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setListPage}
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -118,12 +142,14 @@ export function PagesListPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {pagesQuery.isLoading ? (
-              <TableEmpty colSpan={5} message="Yükleniyor…" />
-            ) : (pagesQuery.data?.items.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={5} message="Sayfa bulunamadı" />
-            ) : (
-              pagesQuery.data!.items.map((page) => (
+            <TableQueryState
+              colSpan={5}
+              isLoading={pagesQuery.isLoading}
+              isError={pagesQuery.isError}
+              isEmpty={items.length === 0}
+              emptyMessage="Sayfa bulunamadı"
+            >
+              {items.map((page) => (
                 <TableRow key={page.id}>
                   <TableCell>
                     <p className="font-medium text-slate-900">{page.title}</p>
@@ -183,39 +209,27 @@ export function PagesListPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-      </Card>
+      </ListPageShell>
 
-      <Modal
+      <ConfirmDialog
         isOpen={deleteModal.isOpen}
         onClose={deleteModal.close}
         title="Sayfayı sil"
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={deleteModal.close}>
-              İptal
-            </Button>
-            <Button
-              variant="danger"
-              isLoading={deleteMutation.isPending}
-              onClick={() => pageToDelete && deleteMutation.mutate(pageToDelete.id)}
-            >
-              Sil
-            </Button>
-          </>
+        description={
+          pageToDelete
+            ? `"${pageToDelete.title}" kalıcı olarak silinecek. Devam edilsin mi?`
+            : 'Bu sayfa kalıcı olarak silinecek.'
         }
-      >
-        <p className="text-sm text-slate-600">
-          <strong>{pageToDelete?.title}</strong> kalıcı olarak silinecek.
-        </p>
-        {deleteMutation.error instanceof ApiError ? (
-          <p className="mt-2 text-sm text-red-600">{deleteMutation.error.message}</p>
-        ) : null}
-      </Modal>
+        confirmLabel="Sil"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() =>
+          pageToDelete && deleteMutation.mutate(pageToDelete.id)
+        }
+      />
     </>
   );
 }

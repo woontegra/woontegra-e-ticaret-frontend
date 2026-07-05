@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, Plus, Save, Upload } from 'lucide-react';
 import type { PageBlockDto, PageBlockType } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import {
   createLayoutBlock,
   deleteLayoutBlock,
@@ -12,6 +11,7 @@ import {
   updateLayoutBlock,
 } from '@/shared/api/layouts.api';
 import { AddBlockModal } from '@/admin/components/builder/AddBlockModal';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import { BlockListPanel } from '@/admin/components/builder/BlockListPanel';
 import { BlockSettingsPanel } from '@/admin/components/builder/BlockSettingsPanel';
 import { BuilderPreview } from '@/admin/components/builder/BuilderPreview';
@@ -22,6 +22,7 @@ import {
   sortBlocks,
 } from '@/shared/lib/block-model';
 import { Badge, Button, Card, CardHeader, Modal } from '@/shared/ui';
+import { HomeLayoutSkeleton } from '@/storefront/blocks/HomeLayoutSkeleton';
 
 function reindexBlocks(blocks: PageBlockDto[]): PageBlockDto[] {
   return blocks.map((block, index) => ({ ...block, sortOrder: index }));
@@ -46,6 +47,7 @@ function moveBlock(
 
 export function PageBuilderPage() {
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const addModal = useDisclosure();
   const deleteModal = useDisclosure();
 
@@ -54,7 +56,6 @@ export function PageBuilderPage() {
   const [baselineSnapshot, setBaselineSnapshot] = useState('');
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const layoutQuery = useQuery({
@@ -147,14 +148,13 @@ export function PageBuilderPage() {
     },
     onSuccess: () => {
       setBaselineSnapshot(blocksSnapshot(localBlocks));
-      setMessage('Taslak kaydedildi.');
       setErrorMessage(null);
+      onSuccess('Taslak kaydedildi.');
       invalidate();
     },
     onError: (error) => {
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Taslak kaydedilemedi.',
-      );
+      const message = onError(error, 'Taslak kaydedilemedi.');
+      setErrorMessage(message);
     },
   });
 
@@ -167,14 +167,13 @@ export function PageBuilderPage() {
       return publishLayout(layoutId);
     },
     onSuccess: () => {
-      setMessage('Ana sayfa yayınlandı.');
       setErrorMessage(null);
+      onSuccess('Ana sayfa yayınlandı.');
       invalidate();
     },
     onError: (error) => {
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Yayınlama başarısız.',
-      );
+      const message = onError(error, 'Yayınlama başarısız.');
+      setErrorMessage(message);
     },
   });
 
@@ -199,14 +198,13 @@ export function PageBuilderPage() {
         return next;
       });
       setSelectedBlockId(block.id);
-      setMessage('Blok eklendi.');
       setErrorMessage(null);
+      onSuccess('Blok eklendi.');
       invalidate();
     },
     onError: (error) => {
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Blok eklenemedi.',
-      );
+      const message = onError(error, 'Blok eklenemedi.');
+      setErrorMessage(message);
     },
   });
 
@@ -227,14 +225,13 @@ export function PageBuilderPage() {
         return next;
       });
       setBlockToDelete(null);
-      setMessage('Blok silindi.');
       setErrorMessage(null);
+      onSuccess('Blok silindi.');
       invalidate();
     },
     onError: (error) => {
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Blok silinemedi.',
-      );
+      const message = onError(error, 'Blok silinemedi.');
+      setErrorMessage(message);
     },
   });
 
@@ -318,11 +315,6 @@ export function PageBuilderPage() {
           }
         />
 
-        {message ? (
-          <p className="border-t border-slate-100 px-4 py-2 text-sm text-green-700">
-            {message}
-          </p>
-        ) : null}
         {errorMessage ? (
           <p className="border-t border-slate-100 px-4 py-2 text-sm text-red-600">
             {errorMessage}
@@ -331,8 +323,8 @@ export function PageBuilderPage() {
       </Card>
 
       {layoutQuery.isLoading ? (
-        <Card>
-          <p className="p-6 text-sm text-slate-500">Yükleniyor…</p>
+        <Card padding="none">
+          <HomeLayoutSkeleton />
         </Card>
       ) : layoutQuery.isError ? (
         <Card>
@@ -373,6 +365,7 @@ export function PageBuilderPage() {
               <BuilderPreview
                 blocks={localBlocks}
                 selectedBlockId={selectedBlockId}
+                ready={initialized}
               />
             </div>
           </Card>

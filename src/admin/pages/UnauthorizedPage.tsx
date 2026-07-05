@@ -1,24 +1,39 @@
 import { ShieldX } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Button, Card } from '@/shared/ui';
+import { useAuthStore } from '@/shared/auth/auth.store';
+import { Button } from '@/shared/ui';
 
 export function UnauthorizedPage() {
+  const user = useAuthStore((state) => state.user);
+
   return (
-    <div className="flex min-h-[50vh] items-center justify-center">
-      <Card padding="md" className="max-w-md text-center">
+    <div className="flex min-h-[50vh] items-center justify-center px-4">
+      <div className="max-w-md text-center">
         <ShieldX className="mx-auto h-10 w-10 text-red-500" />
-        <h1 className="mt-3 text-base font-semibold text-slate-900">
-          Yetkisiz erişim
+        <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-400">
+          403
+        </p>
+        <h1 className="mt-1 text-base font-semibold text-slate-900">
+          Bu sayfaya erişim yetkiniz yok
         </h1>
         <p className="mt-2 text-sm text-slate-500">
-          Bu sayfayı görüntülemek için gerekli role sahip değilsiniz.
+          {user?.role
+            ? `Hesabınız (${user.role}) bu işlem için yeterli yetkiye sahip değil.`
+            : 'Bu işlem için gerekli role sahip değilsiniz.'}
         </p>
-        <Link to="/admin">
-          <Button className="mt-4" variant="secondary">
-            Dashboard&apos;a dön
-          </Button>
-        </Link>
-      </Card>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <Link to="/admin">
+            <Button variant="secondary" size="sm">
+              Dashboard
+            </Button>
+          </Link>
+          <Link to="/admin/login">
+            <Button variant="ghost" size="sm">
+              Farklı hesap
+            </Button>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

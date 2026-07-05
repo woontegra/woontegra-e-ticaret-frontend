@@ -1,4 +1,8 @@
 export { Badge } from './Badge';
+export { ConfirmDialog } from './ConfirmDialog';
+export { Pagination } from './Pagination';
+export { Toaster } from './Toast';
+export { toast } from './toast.store';
 export { Button } from './Button';
 export { Card, CardHeader } from './Card';
 export { Drawer } from './Drawer';
@@ -7,6 +11,7 @@ export { Input } from './Input';
 export { Label } from './Label';
 export { Modal } from './Modal';
 export { Select } from './Select';
+export { SecretField } from './SecretField';
 export {
   Table,
   TableBody,

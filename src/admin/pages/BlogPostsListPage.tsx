@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -9,31 +9,36 @@ import {
   listBlogCategories,
   listBlogPosts,
 } from '@/shared/api/blog.api';
+import { ListPageShell } from '@/admin/components/ui';
+import { TableQueryState } from '@/admin/components/TableQueryState';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
+  ConfirmDialog,
   FilterBar,
-  Modal,
+  Pagination,
   Select,
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
 } from '@/shared/ui';
 
+const PAGE_SIZE = 20;
+
 export function BlogPostsListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<PageStatus | ''>('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [page, setPage] = useState(1);
   const [postToDelete, setPostToDelete] = useState<BlogPostDto | null>(null);
 
   const deleteModal = useDisclosure();
@@ -43,8 +48,10 @@ export function BlogPostsListPage() {
       search: search || undefined,
       status: statusFilter || undefined,
       categoryId: categoryFilter || undefined,
+      page,
+      limit: PAGE_SIZE,
     }),
-    [search, statusFilter, categoryFilter],
+    [search, statusFilter, categoryFilter, page],
   );
 
   const postsQuery = useQuery({
@@ -57,63 +64,81 @@ export function BlogPostsListPage() {
     queryFn: listBlogCategories,
   });
 
+  const items = postsQuery.data?.items ?? [];
+  const total = postsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, categoryFilter]);
+
   const deleteMutation = useMutation({
     mutationFn: deleteBlogPost,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'blog'] });
+      queryClient.invalidateQueries({ queryKey: ['public', 'blog'] });
       deleteModal.close();
       setPostToDelete(null);
+      onSuccess('Yazı silindi.');
     },
+    onError: (error) => onError(error, 'Yazı silinemedi.'),
   });
 
   return (
     <>
-      <Card padding="sm">
-        <CardHeader
-          title="Blog Yazıları"
-          description="Blog içeriklerini yönetin"
-          action={
-            <Button
-              size="sm"
-              onClick={() => navigate('/admin/content/blog/posts/new')}
+      <ListPageShell
+        title="Blog Yazıları"
+        description="Blog içeriklerini ve yayın durumlarını yönetin"
+        actions={
+          <Button
+            size="sm"
+            onClick={() => navigate('/admin/content/blog/posts/new')}
+          >
+            <Plus className="h-4 w-4" />
+            Yeni yazı
+          </Button>
+        }
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Başlık veya slug ara…"
+          >
+            <Select
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as PageStatus | '')
+              }
+              className="h-8 text-xs"
             >
-              <Plus className="h-4 w-4" />
-              Yeni yazı
-            </Button>
-          }
-        />
-
-        <FilterBar
-          className="mb-4"
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Başlık veya slug ara…"
-        >
-          <Select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as PageStatus | '')
-            }
-            className="w-36"
-          >
-            <option value="">Tüm durumlar</option>
-            <option value="DRAFT">Taslak</option>
-            <option value="PUBLISHED">Yayında</option>
-          </Select>
-          <Select
-            value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value)}
-            className="w-40"
-          >
-            <option value="">Tüm kategoriler</option>
-            {(categoriesQuery.data ?? []).map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </Select>
-        </FilterBar>
-
+              <option value="">Tüm durumlar</option>
+              <option value="DRAFT">Taslak</option>
+              <option value="PUBLISHED">Yayında</option>
+            </Select>
+            <Select
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+              className="h-8 text-xs"
+            >
+              <option value="">Tüm kategoriler</option>
+              {(categoriesQuery.data ?? []).map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </Select>
+          </FilterBar>
+        }
+        footer={
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -124,12 +149,14 @@ export function BlogPostsListPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {postsQuery.isLoading ? (
-              <TableEmpty colSpan={4} message="Yükleniyor…" />
-            ) : (postsQuery.data?.items.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={4} message="Blog yazısı bulunamadı" />
-            ) : (
-              postsQuery.data!.items.map((post) => (
+            <TableQueryState
+              colSpan={4}
+              isLoading={postsQuery.isLoading}
+              isError={postsQuery.isError}
+              isEmpty={items.length === 0}
+              emptyMessage="Blog yazısı bulunamadı"
+            >
+              {items.map((post) => (
                 <TableRow key={post.id}>
                   <TableCell>
                     <p className="font-medium text-slate-900">{post.title}</p>
@@ -186,36 +213,27 @@ export function BlogPostsListPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-      </Card>
+      </ListPageShell>
 
-      <Modal
+      <ConfirmDialog
         isOpen={deleteModal.isOpen}
         onClose={deleteModal.close}
         title="Yazıyı sil"
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={deleteModal.close}>
-              İptal
-            </Button>
-            <Button
-              variant="danger"
-              isLoading={deleteMutation.isPending}
-              onClick={() => postToDelete && deleteMutation.mutate(postToDelete.id)}
-            >
-              Sil
-            </Button>
-          </>
+        description={
+          postToDelete
+            ? `"${postToDelete.title}" kalıcı olarak silinecek. Devam edilsin mi?`
+            : 'Bu yazı kalıcı olarak silinecek.'
         }
-      >
-        <p className="text-sm text-slate-600">
-          <strong>{postToDelete?.title}</strong> kalıcı olarak silinecek.
-        </p>
-      </Modal>
+        confirmLabel="Sil"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() =>
+          postToDelete && deleteMutation.mutate(postToDelete.id)
+        }
+      />
     </>
   );
 }

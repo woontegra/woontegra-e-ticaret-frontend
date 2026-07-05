@@ -11,7 +11,9 @@ import {
   replyProductReview,
 } from '@/shared/api/reviews.api';
 import { getProductPublicPath } from '@/shared/api/products.api';
-import { Badge, Button, Label, Textarea } from '@/shared/ui';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
+import { useDisclosure } from '@/shared/hooks/useDisclosure';
+import { Badge, Button, ConfirmDialog, Label, Textarea } from '@/shared/ui';
 import { StarRatingDisplay } from '@/storefront/components/StarRating';
 
 interface ProductReviewDetailPanelProps {
@@ -24,6 +26,8 @@ export function ProductReviewDetailPanel({
   onDeleted,
 }: ProductReviewDetailPanelProps) {
   const queryClient = useQueryClient();
+  const deleteModal = useDisclosure();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const [adminReply, setAdminReply] = useState(review.adminReply ?? '');
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -36,6 +40,11 @@ export function ProductReviewDetailPanel({
     queryClient.invalidateQueries({
       queryKey: ['admin', 'product-reviews', review.id],
     });
+    if (review.productSlug) {
+      queryClient.invalidateQueries({
+        queryKey: ['public', 'products', review.productSlug, 'reviews'],
+      });
+    }
   };
 
   const approveMutation = useMutation({
@@ -71,8 +80,11 @@ export function ProductReviewDetailPanel({
     mutationFn: () => deleteProductReview(review.id),
     onSuccess: () => {
       invalidate();
+      deleteModal.close();
+      onSuccess('Yorum silindi.');
       onDeleted?.();
     },
+    onError: (error) => onError(error, 'Yorum silinemedi.'),
   });
 
   const productPath =
@@ -194,15 +206,21 @@ export function ProductReviewDetailPanel({
           size="sm"
           variant="danger"
           disabled={deleteMutation.isPending}
-          onClick={() => {
-            if (window.confirm('Bu yorumu kalıcı olarak silmek istiyor musunuz?')) {
-              deleteMutation.mutate();
-            }
-          }}
+          onClick={deleteModal.open}
         >
           Yorumu sil
         </Button>
       </section>
+
+      <ConfirmDialog
+        isOpen={deleteModal.isOpen}
+        onClose={deleteModal.close}
+        title="Yorumu sil"
+        description="Bu yorum kalıcı olarak silinecek. Devam edilsin mi?"
+        confirmLabel="Sil"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate()}
+      />
 
       {feedback ? <p className="text-slate-600">{feedback}</p> : null}
 

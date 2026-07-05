@@ -1,7 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ImageIcon, Upload } from 'lucide-react';
-import type { MediaAssetDto, MediaTypeFilter } from '@/shared/types/api';
+import type {
+  MediaAssetDto,
+  MediaTypeFilter,
+  MediaUsageType,
+} from '@/shared/types/api';
 import {
   isImageMedia,
   listMedia,
@@ -15,6 +19,7 @@ export interface MediaPickerProps {
   onSelect: (asset: MediaAssetDto) => void;
   /** Varsayılan: image */
   typeFilter?: MediaTypeFilter;
+  usageType?: MediaUsageType;
   folder?: string;
   title?: string;
 }
@@ -24,6 +29,7 @@ export function MediaPicker({
   onClose,
   onSelect,
   typeFilter = 'image',
+  usageType,
   folder = 'general',
   title = 'Medya seç',
 }: MediaPickerProps) {
@@ -35,9 +41,11 @@ export function MediaPicker({
     () => ({
       search: search || undefined,
       type: typeFilter,
+      usageType,
+      library: 'images' as const,
       folder: folder || undefined,
     }),
-    [search, typeFilter, folder],
+    [search, typeFilter, usageType, folder],
   );
 
   const mediaQuery = useQuery({
@@ -47,7 +55,8 @@ export function MediaPicker({
   });
 
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => uploadMedia(file, { folder }),
+    mutationFn: (file: File) =>
+      uploadMedia(file, { folder, usageType: usageType ?? 'IMAGE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'media'] });
     },
@@ -88,7 +97,7 @@ export function MediaPicker({
             isLoading={uploadMutation.isPending}
           >
             <Upload className="h-4 w-4" />
-            Yükle
+            Görsel yükle
           </Button>
         </div>
 
@@ -112,7 +121,7 @@ export function MediaPicker({
                 className="overflow-hidden rounded-lg border border-slate-200 transition hover:border-slate-400"
               >
                 <div className="flex aspect-square items-center justify-center bg-slate-50">
-                  {isImageMedia(asset) ? (
+                  {isImageMedia(asset) && asset.url ? (
                     <img
                       src={asset.url}
                       alt={asset.altText ?? asset.originalName}
@@ -132,7 +141,7 @@ export function MediaPicker({
 
         {!mediaQuery.isLoading && (mediaQuery.data?.items.length ?? 0) === 0 ? (
           <p className="py-6 text-center text-sm text-slate-500">
-            Medya bulunamadı. Yeni dosya yükleyin.
+            Görsel bulunamadı. Yeni görsel yükleyin.
           </p>
         ) : null}
       </div>

@@ -75,7 +75,8 @@ export const MENU_LOCATION_LABELS: Record<MenuLocation, string> = {
 
 export const MENU_ITEM_TYPE_LABELS: Record<MenuItemType, string> = {
   PAGE: 'Sayfa',
-  CATEGORY: 'Kategori',
+  CATEGORY: 'Blog kategorisi',
+  PRODUCT_CATEGORY: 'Ürün kategorisi',
   PRODUCT: 'Ürün',
   BLOG: 'Blog yazısı',
   CUSTOM_URL: 'Özel URL',

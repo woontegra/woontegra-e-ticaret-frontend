@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import type { BlogCategoryDto } from '@/shared/types/api';
@@ -10,30 +10,39 @@ import {
   slugifyClient,
   updateBlogCategory,
 } from '@/shared/api/blog.api';
+import { AdminPanel } from '@/admin/components/AdminPanel';
+import { BlogSubNav } from '@/admin/components/BlogSubNav';
+import { TableQueryState } from '@/admin/components/TableQueryState';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
+import { useClientPagination } from '@/admin/hooks/useClientPagination';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
+  ConfirmDialog,
+  FilterBar,
   Input,
   Label,
   Modal,
+  Pagination,
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
   Textarea,
 } from '@/shared/ui';
 
+const PAGE_SIZE = 20;
+
 export function BlogCategoriesPage() {
   const queryClient = useQueryClient();
   const formModal = useDisclosure();
   const deleteModal = useDisclosure();
+  const { onSuccess, onError } = useAdminMutationFeedback();
 
+  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<BlogCategoryDto | null>(null);
   const [toDelete, setToDelete] = useState<BlogCategoryDto | null>(null);
   const [form, setForm] = useState({
@@ -51,6 +60,23 @@ export function BlogCategoriesPage() {
     queryKey: ['admin', 'blog', 'categories'],
     queryFn: listBlogCategories,
   });
+
+  const filteredCategories = useMemo(() => {
+    const items = categoriesQuery.data ?? [];
+    if (!search.trim()) return items;
+    const q = search.trim().toLowerCase();
+    return items.filter(
+      (category) =>
+        category.name.toLowerCase().includes(q) ||
+        category.slug.toLowerCase().includes(q),
+    );
+  }, [categoriesQuery.data, search]);
+
+  const pagination = useClientPagination(filteredCategories, PAGE_SIZE);
+
+  useEffect(() => {
+    pagination.resetPage();
+  }, [search]);
 
   useEffect(() => {
     if (selected) {
@@ -103,7 +129,9 @@ export function BlogCategoriesPage() {
       invalidate();
       deleteModal.close();
       setToDelete(null);
+      onSuccess('Kategori silindi.');
     },
+    onError: (error) => onError(error, 'Kategori silinemedi.'),
   });
 
   const openCreate = () => {
@@ -129,18 +157,31 @@ export function BlogCategoriesPage() {
 
   return (
     <>
-      <Card padding="sm">
-        <CardHeader
-          title="Blog Kategorileri"
-          description="Blog kategorilerini yönetin"
-          action={
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              Yeni kategori
-            </Button>
-          }
-        />
-
+      <BlogSubNav />
+      <AdminPanel
+        actions={
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Yeni kategori
+          </Button>
+        }
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Ad veya slug ara…"
+          />
+        }
+        footer={
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            pageSize={PAGE_SIZE}
+            onPageChange={pagination.setPage}
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -151,12 +192,14 @@ export function BlogCategoriesPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {categoriesQuery.isLoading ? (
-              <TableEmpty colSpan={4} message="Yükleniyor…" />
-            ) : (categoriesQuery.data?.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={4} message="Kategori bulunamadı" />
-            ) : (
-              categoriesQuery.data!.map((category) => (
+            <TableQueryState
+              colSpan={4}
+              isLoading={categoriesQuery.isLoading}
+              isError={categoriesQuery.isError}
+              isEmpty={pagination.items.length === 0}
+              emptyMessage="Kategori bulunamadı"
+            >
+              {pagination.items.map((category) => (
                 <TableRow key={category.id}>
                   <TableCell className="font-medium">{category.name}</TableCell>
                   <TableCell className="font-mono text-xs text-slate-600">
@@ -189,11 +232,11 @@ export function BlogCategoriesPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-      </Card>
+      </AdminPanel>
 
       <Modal
         isOpen={formModal.isOpen}
@@ -276,31 +319,19 @@ export function BlogCategoriesPage() {
         </div>
       </Modal>
 
-      <Modal
+      <ConfirmDialog
         isOpen={deleteModal.isOpen}
         onClose={deleteModal.close}
         title="Kategoriyi sil"
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={deleteModal.close}>
-              İptal
-            </Button>
-            <Button
-              variant="danger"
-              isLoading={deleteMutation.isPending}
-              onClick={() => deleteMutation.mutate()}
-            >
-              Sil
-            </Button>
-          </>
+        description={
+          toDelete
+            ? `"${toDelete.name}" silinecek. Yazılardaki kategori bağlantısı kaldırılır.`
+            : 'Bu kategori silinecek.'
         }
-      >
-        <p className="text-sm text-slate-600">
-          <strong>{toDelete?.name}</strong> silinecek. Yazılardaki kategori
-          bağlantısı kaldırılır.
-        </p>
-      </Modal>
+        confirmLabel="Sil"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </>
   );
 }

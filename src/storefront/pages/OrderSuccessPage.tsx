@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, CreditCard, ExternalLink, Truck } from 'lucide-react';
 import {
   formatMoney,
   getPublicOrder,
+  getPublicOrderDownloads,
   ORDER_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
 } from '@/shared/api/cart.api';
@@ -18,6 +20,8 @@ import {
   resolveSeoTitle,
 } from '@/shared/lib/seo-meta';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
+import { uiLabel } from '@/shared/lib/storefront-ui';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 
 export function OrderSuccessPage() {
   const { orderNumber } = useParams<{ orderNumber: string }>();
@@ -26,18 +30,63 @@ export function OrderSuccessPage() {
   const { seoSettings } = usePageSeo();
   const cmsQuery = useOptionalPublicPage('siparis-basarili');
   const cmsPage = cmsQuery.data;
+  const ui = useStorefrontUi();
+  const orderNotFound = uiLabel(ui, 'orderNotFound');
+  const orderSuccessHomeLink = uiLabel(ui, 'orderSuccessHomeLink');
+  const orderNumberLabel = uiLabel(ui, 'orderNumberLabel');
+  const orderBankTransferTitle = uiLabel(ui, 'orderBankTransferTitle');
+  const orderBankTransferHint = uiLabel(ui, 'orderBankTransferHint');
+  const orderBranchLabel = uiLabel(ui, 'orderBranchLabel');
+  const orderTrackingTitle = uiLabel(ui, 'orderTrackingTitle');
+  const orderTrackingNumberLabel = uiLabel(ui, 'orderTrackingNumberLabel');
+  const orderTrackShipment = uiLabel(ui, 'orderTrackShipment');
+  const orderSummaryTitle = uiLabel(ui, 'orderSummaryTitle');
+  const orderTotalLabel = uiLabel(ui, 'orderTotalLabel');
+  const orderTrackLink = uiLabel(ui, 'orderTrackLink');
+  const orderContinueShopping = uiLabel(ui, 'orderContinueShopping');
   const checkoutState = location.state as CheckoutResultDto | null;
   const stateOrder = checkoutState?.order;
 
+  useEffect(() => {
+    if (stateOrder?.customerEmail && orderNumber) {
+      sessionStorage.setItem(
+        `order-email:${orderNumber}`,
+        stateOrder.customerEmail,
+      );
+    }
+  }, [stateOrder, orderNumber]);
+
+  const storedEmail =
+    orderNumber && typeof window !== 'undefined'
+      ? sessionStorage.getItem(`order-email:${orderNumber}`)
+      : null;
+  const lookupEmail = stateOrder?.customerEmail ?? storedEmail ?? '';
+
   const orderQuery = useQuery({
-    queryKey: ['public', 'orders', orderNumber],
-    queryFn: () => getPublicOrder(orderNumber!),
-    enabled: Boolean(orderNumber) && !stateOrder,
+    queryKey: ['public', 'orders', orderNumber, lookupEmail],
+    queryFn: () => getPublicOrder(orderNumber!, lookupEmail),
+    enabled: Boolean(orderNumber) && Boolean(lookupEmail) && !stateOrder,
+    retry: false,
   });
 
   const order: PublicOrderDto | undefined = stateOrder ?? orderQuery.data;
   const payment = checkoutState?.payment;
   const shipment = order?.shipment;
+  const fulfillmentMessages =
+    checkoutState?.fulfillment?.messages ?? order?.fulfillment?.messages ?? [];
+
+  const downloadsQuery = useQuery({
+    queryKey: ['public', 'orders', orderNumber, lookupEmail, 'downloads'],
+    queryFn: () => getPublicOrderDownloads(orderNumber!, lookupEmail),
+    enabled:
+      Boolean(orderNumber) &&
+      Boolean(lookupEmail) &&
+      order?.paymentStatus === 'PAID',
+    retry: false,
+  });
+
+  const downloadLinks =
+    order?.fulfillment?.downloadLinks ?? downloadsQuery.data?.links ?? [];
   if (!order && orderQuery.isPending) {
     return (
       <div className="mx-auto max-w-2xl animate-pulse space-y-4 py-16">
@@ -48,12 +97,20 @@ export function OrderSuccessPage() {
   }
 
   if (!order) {
+    if (!orderNotFound && !orderSuccessHomeLink) {
+      return null;
+    }
+
     return (
       <div className="py-16 text-center">
-        <p className="text-sm text-theme-muted">Sipariş bulunamadı.</p>
-        <Link to="/" className="mt-4 inline-block text-sm hover:underline">
-          Ana sayfaya dön
-        </Link>
+        {orderNotFound ? (
+          <p className="text-sm text-theme-muted">{orderNotFound}</p>
+        ) : null}
+        {orderSuccessHomeLink ? (
+          <Link to="/" className="mt-4 inline-block text-sm hover:underline">
+            {orderSuccessHomeLink}
+          </Link>
+        ) : null}
       </div>
     );
   }
@@ -94,10 +151,12 @@ export function OrderSuccessPage() {
           seoSettings={seoSettings}
           siteSettings={siteQuery.data}
         />
-        <p className="mt-2 text-theme-muted">
-          Sipariş numaranız:{' '}
-          <span className="font-medium text-slate-900">{order.orderNumber}</span>
-        </p>
+        {orderNumberLabel ? (
+          <p className="mt-2 text-theme-muted">
+            {orderNumberLabel}{' '}
+            <span className="font-medium text-slate-900">{order.orderNumber}</span>
+          </p>
+        ) : null}
         <p className="mt-1 text-sm text-theme-muted">
           {ORDER_STATUS_LABELS[order.status]} ·{' '}
           {PAYMENT_STATUS_LABELS[order.paymentStatus]}
@@ -105,18 +164,18 @@ export function OrderSuccessPage() {
         </p>
 
         {payment?.methodType === 'BANK_TRANSFER' &&
-        payment.bankAccounts?.length ? (
+        payment.bankAccounts?.length &&
+        (orderBankTransferTitle || orderBankTransferHint) ? (
           <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 text-left text-sm">
-            <h2 className="flex items-center gap-2 font-semibold text-slate-800">
-              <CreditCard className="h-4 w-4" />
-              Havale / EFT bilgileri
-            </h2>
-            <p className="mt-2 text-slate-600">
-              Lütfen aşağıdaki hesaplardan birine{' '}
-              <strong>{formatMoney(order.grandTotal)}</strong> tutarında ödeme
-              yapın. Açıklama alanına sipariş numaranızı yazın:{' '}
-              <strong>{order.orderNumber}</strong>
-            </p>
+            {orderBankTransferTitle ? (
+              <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+                <CreditCard className="h-4 w-4" />
+                {orderBankTransferTitle}
+              </h2>
+            ) : null}
+            {orderBankTransferHint ? (
+              <p className="mt-2 text-slate-600">{orderBankTransferHint}</p>
+            ) : null}
             <ul className="mt-3 space-y-3">
               {payment.bankAccounts.map((account, index) => (
                 <li
@@ -126,8 +185,10 @@ export function OrderSuccessPage() {
                   <p className="font-medium">{account.bankName}</p>
                   <p className="text-slate-600">{account.accountHolder}</p>
                   <p className="mt-1 font-mono text-sm">{account.iban}</p>
-                  {account.branch ? (
-                    <p className="text-slate-500">Şube: {account.branch}</p>
+                  {account.branch && orderBranchLabel ? (
+                    <p className="text-slate-500">
+                      {orderBranchLabel} {account.branch}
+                    </p>
                   ) : null}
                 </li>
               ))}
@@ -150,68 +211,134 @@ export function OrderSuccessPage() {
           </div>
         ) : null}
 
-        {shipment?.trackingUrl ? (          <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 text-left text-sm">
-            <h2 className="flex items-center gap-2 font-semibold text-slate-800">
-              <Truck className="h-4 w-4" />
-              Kargo takibi
-            </h2>
+        {fulfillmentMessages.length > 0 ? (
+          <div className="mt-6 space-y-2 rounded-lg border border-slate-200 bg-white p-4 text-left text-sm text-slate-700">
+            {fulfillmentMessages.map((message) => (
+              <p key={message}>{message}</p>
+            ))}
+          </div>
+        ) : null}
+
+        {order.paymentStatus === 'PAID' && downloadLinks.length > 0 ? (
+          <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 text-left text-sm">
+            <h2 className="font-semibold text-slate-800">İndirme bağlantıları</h2>
+            <ul className="mt-3 space-y-3">
+              {downloadLinks.map((link, index) => (
+                <li
+                  key={`${link.productName}-${link.fileType ?? index}`}
+                  className="rounded-md border border-slate-100 bg-slate-50 p-3"
+                >
+                  <p className="font-medium text-slate-900">{link.productName}</p>
+                  <p className="text-slate-600">{link.label}</p>
+                  {link.downloadUrl ? (
+                    <a
+                      href={link.downloadUrl}
+                      className="mt-2 inline-block text-sm font-medium text-slate-900 underline"
+                    >
+                      Dosyayı indir
+                    </a>
+                  ) : (
+                    <p className="mt-2 text-slate-600">
+                      {link.note ??
+                        'İndirme bağlantısı e-posta adresinize gönderildi.'}
+                    </p>
+                  )}
+                  {link.expiresAt ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Geçerlilik:{' '}
+                      {new Date(link.expiresAt).toLocaleDateString('tr-TR')}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {shipment?.trackingUrl &&
+        (orderTrackingTitle ||
+          orderTrackingNumberLabel ||
+          orderTrackShipment) ? (
+          <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 text-left text-sm">
+            {orderTrackingTitle ? (
+              <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+                <Truck className="h-4 w-4" />
+                {orderTrackingTitle}
+              </h2>
+            ) : null}
             {shipment.carrierName ? (
               <p className="mt-2 text-slate-600">{shipment.carrierName}</p>
             ) : null}
-            {shipment.trackingNumber ? (
+            {shipment.trackingNumber && orderTrackingNumberLabel ? (
               <p className="mt-1 text-slate-600">
-                Takip no:{' '}
+                {orderTrackingNumberLabel}{' '}
                 <span className="font-medium text-slate-900">
                   {shipment.trackingNumber}
                 </span>
               </p>
             ) : null}
-            <a
-              href={shipment.trackingUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="theme-btn-primary mt-3 inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm"
-            >
-              Kargoyu takip et
-              <ExternalLink className="h-4 w-4" />
-            </a>
+            {orderTrackShipment ? (
+              <a
+                href={shipment.trackingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="theme-btn-primary mt-3 inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm"
+              >
+                {orderTrackShipment}
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            ) : null}
           </div>
         ) : null}
 
-        <div className="mt-8 rounded-lg border border-slate-200 bg-white p-4 text-left text-sm">
-          <h2 className="font-semibold text-slate-800">Sipariş özeti</h2>
-          <ul className="mt-3 space-y-2">
-            {order.items.map((item) => (
-              <li key={item.id} className="flex justify-between gap-2">
-                <span className="text-slate-600">
-                  {item.nameSnapshot} × {item.quantity}
-                </span>
-                <span>{formatMoney(item.total)}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-4 border-t border-slate-100 pt-3 font-semibold">
-            Toplam: {formatMoney(order.grandTotal)}
-          </p>
-        </div>
+        {orderSummaryTitle || orderTotalLabel ? (
+          <div className="mt-8 rounded-lg border border-slate-200 bg-white p-4 text-left text-sm">
+            {orderSummaryTitle ? (
+              <h2 className="font-semibold text-slate-800">{orderSummaryTitle}</h2>
+            ) : null}
+            <ul className="mt-3 space-y-2">
+              {order.items.map((item) => (
+                <li key={item.id} className="flex justify-between gap-2">
+                  <span className="text-slate-600">
+                    {item.nameSnapshot} × {item.quantity}
+                  </span>
+                  <span>{formatMoney(item.total)}</span>
+                </li>
+              ))}
+            </ul>
+            {orderTotalLabel ? (
+              <p className="mt-4 border-t border-slate-100 pt-3 font-semibold">
+                {orderTotalLabel} {formatMoney(order.grandTotal)}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link
-            to={`/siparis/takip/${order.orderNumber}`}
-            className="inline-block rounded-md border border-slate-200 px-4 py-2 text-sm hover:bg-slate-50"
-          >
-            Siparişi takip et
-          </Link>
-          <Link
-            to="/urunler"
-            className="theme-btn-primary inline-block rounded-md px-4 py-2 text-sm"
-          >
-            Alışverişe devam
-          </Link>
-          <Link to="/" className="inline-block text-sm hover:underline">
-            Ana sayfa
-          </Link>
-        </div>
+        {orderTrackLink || orderContinueShopping || orderSuccessHomeLink ? (
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            {orderTrackLink ? (
+              <Link
+                to={`/siparis/takip/${order.orderNumber}?email=${encodeURIComponent(order.customerEmail)}`}
+                className="inline-block rounded-md border border-slate-200 px-4 py-2 text-sm hover:bg-slate-50"
+              >
+                {orderTrackLink}
+              </Link>
+            ) : null}
+            {orderContinueShopping ? (
+              <Link
+                to="/urunler"
+                className="theme-btn-primary inline-block rounded-md px-4 py-2 text-sm"
+              >
+                {orderContinueShopping}
+              </Link>
+            ) : null}
+            {orderSuccessHomeLink ? (
+              <Link to="/" className="inline-block text-sm hover:underline">
+                {orderSuccessHomeLink}
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </>
   );

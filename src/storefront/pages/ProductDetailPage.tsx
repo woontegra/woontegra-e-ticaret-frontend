@@ -1,4 +1,4 @@
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import type { CartItemDto, PublicProductVariantDto } from '@/shared/types/api';
@@ -22,25 +22,38 @@ import {
   buildCanonicalUrl,
   resolveOgImageUrl,
   resolveSeoDescription,
-  resolveSeoTitle,
 } from '@/shared/lib/seo-meta';
+import {
+  buildQuoteContactUrl,
+  canAddProductToCart,
+  formatPublicProductPrice,
+  getDeliveryModeBadge,
+  getProductDeliveryHint,
+  getProductPrimaryAction,
+  toProductActionSource,
+} from '@/shared/lib/productDelivery';
 import { ApiError } from '@/shared/api/client';
+import { uiLabel } from '@/shared/lib/storefront-ui';
 import { useCart } from '@/storefront/hooks/useCart';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 import { Badge, Button } from '@/shared/ui';
 
-function formatPrice(value: number | null) {
-  if (value === null) return null;
-  return new Intl.NumberFormat('tr-TR', {
-    style: 'currency',
-    currency: 'TRY',
-  }).format(value);
+function buildFreeDownloadHref(productSlug: string, fileType?: string | null) {
+  const type = fileType === 'setup' || fileType === 'portable' ? fileType : 'other';
+  return `/api/downloads/free/${encodeURIComponent(productSlug)}/${encodeURIComponent(type)}`;
 }
 
-export function ProductDetailPage() {
+interface ProductDetailPageProps {
+  productKind?: 'SOFTWARE' | 'PHYSICAL';
+}
+
+export function ProductDetailPage({ productKind }: ProductDetailPageProps = {}) {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const siteQuery = usePublicSiteSettings();
   const { seoSettings } = usePageSeo();
+  const ui = useStorefrontUi();
   const { addMutation, itemCount } = useCart();
   const [selectedVariant, setSelectedVariant] =
     useState<PublicProductVariantDto | null>(null);
@@ -64,7 +77,7 @@ export function ProductDetailPage() {
 
   const activeVariant = selectedVariant ?? defaultVariant;
 
-  const price = getVariantDisplayPrice(
+  const variantPrice = getVariantDisplayPrice(
     activeVariant,
     product?.price ?? product?.salePrice ?? product?.basePrice ?? null,
   );
@@ -74,35 +87,88 @@ export function ProductDetailPage() {
   );
   const listPath = getProductsIndexPath(product?.productKind);
   const hasVariants = (product?.variants.length ?? 0) > 0;
-  const canAddToCart = price !== null && (!hasVariants || activeVariant !== null);
+  const canAddToCart =
+    product &&
+    canAddProductToCart(product) &&
+    variantPrice !== null &&
+    (!hasVariants || activeVariant !== null);
 
-  const handleAddToCart = () => {
-    if (!product || !canAddToCart) return;
+  const primaryAction = product
+    ? getProductPrimaryAction(toProductActionSource(product))
+    : { type: 'none' as const, label: '' };
 
+  const deliveryHint = product ? getProductDeliveryHint(product) : null;
+  const deliveryBadge = product
+    ? getDeliveryModeBadge(product.deliveryMode)
+    : null;
+  const priceLabel = product ? formatPublicProductPrice(product) : null;
+
+  const badgeNew = uiLabel(ui, 'productBadgeNew');
+  const badgeFeatured = uiLabel(ui, 'productBadgeFeatured');
+  const badgeBestSeller = uiLabel(ui, 'productBadgeBestSeller');
+  const actionDemo = uiLabel(ui, 'productActionDemo');
+  const addToCartPending = uiLabel(ui, 'productAddToCartPending');
+  const addToCartErrorLabel = uiLabel(ui, 'productAddToCartError');
+  const quantityLabel = uiLabel(ui, 'productQuantityLabel');
+
+  const pageTitle =
+    product?.seoTitle?.trim() ||
+    (siteQuery.data?.siteName
+      ? `${product?.name ?? ''} | ${siteQuery.data.siteName}`
+      : product?.name ?? '');
+
+  const pageDescription =
+    product?.seoDescription?.trim() ||
+    product?.shortDescription?.trim() ||
+    undefined;
+
+  const handlePrimaryAction = () => {
+    if (!product) return;
     setAddError(null);
-    addMutation.mutate(
-      {
-        productId: product.id,
-        variantId: activeVariant?.id ?? null,
-        quantity,
-      },
-      {
-        onSuccess: (cart) => {
-          const added = cart.items.find(
-            (item) =>
-              item.productId === product.id &&
-              (item.variantId ?? null) === (activeVariant?.id ?? null),
-          );
-          setAddedItem(added ?? cart.items[cart.items.length - 1] ?? null);
-          setCartModalOpen(true);
+
+    if (primaryAction.type === 'quote') {
+      navigate(buildQuoteContactUrl(product.name));
+      return;
+    }
+
+    if (primaryAction.type === 'download') {
+      document.getElementById('product-downloads')?.scrollIntoView({
+        behavior: 'smooth',
+      });
+      return;
+    }
+
+    if (
+      (primaryAction.type === 'add_to_cart' ||
+        primaryAction.type === 'subscribe') &&
+      canAddToCart
+    ) {
+      addMutation.mutate(
+        {
+          productId: product.id,
+          variantId: activeVariant?.id ?? null,
+          quantity,
         },
-        onError: (error) => {
-          setAddError(
-            error instanceof ApiError ? error.message : 'Sepete eklenemedi.',
-          );
+        {
+          onSuccess: (cart) => {
+            const added = cart.items.find(
+              (item) =>
+                item.productId === product.id &&
+                (item.variantId ?? null) === (activeVariant?.id ?? null),
+            );
+            setAddedItem(added ?? cart.items[cart.items.length - 1] ?? null);
+            setCartModalOpen(true);
+          },
+          onError: (error) => {
+            setAddError(
+              error instanceof ApiError
+                ? error.message
+                : addToCartErrorLabel ?? '',
+            );
+          },
         },
-      },
-    );
+      );
+    }
   };
 
   if (productQuery.isPending) {
@@ -117,28 +183,37 @@ export function ProductDetailPage() {
   }
 
   if (productQuery.isError || !product) {
+    const productNotFound = uiLabel(ui, 'productNotFound');
+    const listBackLink = uiLabel(ui, 'productListBackLink');
+
+    if (!productNotFound && !listBackLink) {
+      return null;
+    }
+
     return (
       <div className="mx-auto max-w-3xl py-16 text-center">
-        <p className="text-sm text-theme-muted">Ürün bulunamadı.</p>
-        <Link to={listPath} className="mt-4 inline-block text-sm hover:underline">
-          ← Listeye dön
-        </Link>
+        {productNotFound ? (
+          <p className="text-sm text-theme-muted">{productNotFound}</p>
+        ) : null}
+        {listBackLink ? (
+          <Link to={listPath} className="mt-4 inline-block text-sm hover:underline">
+            {listBackLink}
+          </Link>
+        ) : null}
       </div>
     );
   }
+
+  const downloadFiles = product.downloadFiles?.files ?? [];
 
   return (
     <>
       <SeoHead
         siteSettings={siteQuery.data}
         seoSettings={seoSettings}
-        title={resolveSeoTitle(
-          { seoTitle: product.seoTitle },
-          seoSettings,
-          siteQuery.data,
-        )}
+        title={pageTitle}
         description={resolveSeoDescription(
-          { seoDescription: product.seoDescription },
+          { seoDescription: pageDescription ?? null },
           seoSettings,
           siteQuery.data,
         )}
@@ -150,7 +225,9 @@ export function ProductDetailPage() {
         )}
         canonicalUrl={buildCanonicalUrl(
           product.canonicalUrl,
-          location.pathname,
+          productKind === 'SOFTWARE' || product.productKind === 'SOFTWARE'
+            ? `/yazilimlar/${product.slug}`
+            : location.pathname,
           seoSettings,
           siteQuery.data,
         )}
@@ -158,9 +235,11 @@ export function ProductDetailPage() {
       />
 
       <div className="mx-auto max-w-5xl">
-        <Link to={listPath} className="text-sm text-theme-muted hover:underline">
-          ← Geri
-        </Link>
+        {uiLabel(ui, 'productBackLink') ? (
+          <Link to={listPath} className="text-sm text-theme-muted hover:underline">
+            {uiLabel(ui, 'productBackLink')}
+          </Link>
+        ) : null}
 
         <div className="mt-4 grid gap-8 lg:grid-cols-2">
           <div>
@@ -189,21 +268,44 @@ export function ProductDetailPage() {
 
           <div>
             <div className="flex flex-wrap gap-2">
-              {product.isNew ? <Badge>Yeni</Badge> : null}
-              {product.isFeatured ? <Badge>Öne çıkan</Badge> : null}
-              {product.isBestSeller ? <Badge>Çok satan</Badge> : null}
+              {product.isNew && badgeNew ? <Badge>{badgeNew}</Badge> : null}
+              {product.isFeatured && badgeFeatured ? (
+                <Badge>{badgeFeatured}</Badge>
+              ) : null}
+              {product.isBestSeller && badgeBestSeller ? (
+                <Badge>{badgeBestSeller}</Badge>
+              ) : null}
+              {deliveryBadge ? <Badge>{deliveryBadge}</Badge> : null}
             </div>
 
             <h1 className="theme-heading mt-3 text-2xl sm:text-3xl">
               {product.name}
             </h1>
 
+            {product.version ? (
+              <p className="mt-1 text-sm text-theme-muted">
+                Sürüm {product.version}
+              </p>
+            ) : null}
+
             {product.shortDescription ? (
               <p className="mt-2 text-theme-muted">{product.shortDescription}</p>
             ) : null}
 
-            {price !== null ? (
-              <p className="mt-4 text-xl font-semibold">{formatPrice(price)}</p>
+            {deliveryHint ? (
+              <p className="mt-3 text-sm text-slate-600">{deliveryHint}</p>
+            ) : null}
+
+            {priceLabel ? (
+              <p className="mt-4 text-xl font-semibold">{priceLabel}</p>
+            ) : null}
+
+            {product.featureBullets.length > 0 ? (
+              <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-theme-muted">
+                {product.featureBullets.map((bullet) => (
+                  <li key={bullet}>{bullet}</li>
+                ))}
+              </ul>
             ) : null}
 
             <ProductVariantSelector
@@ -214,68 +316,123 @@ export function ProductDetailPage() {
 
             {product.category ? (
               <p className="mt-2 text-sm text-theme-muted">
-                Kategori: {product.category.name}
+                <Link
+                  to={`/kategori/${product.category.slug}`}
+                  className="hover:underline"
+                >
+                  {product.category.name}
+                </Link>
               </p>
             ) : null}
 
-            {canAddToCart ? (
+            {product.brand ? (
+              <p className="mt-1 text-sm text-theme-muted">
+                <Link
+                  to={`/marka/${product.brand.slug}`}
+                  className="hover:underline"
+                >
+                  {product.brand.name}
+                </Link>
+              </p>
+            ) : null}
+
+            {primaryAction.type !== 'none' && primaryAction.label ? (
               <div className="mt-6 space-y-3">
-                <div className="flex items-center gap-3">
-                  <label className="text-sm text-slate-600">
-                    Adet
-                    <input
-                      type="number"
-                      min={1}
-                      max={99}
-                      value={quantity}
-                      onChange={(event) =>
-                        setQuantity(Math.max(1, Number(event.target.value) || 1))
-                      }
-                      className="ml-2 w-20 rounded-md border border-slate-200 px-2 py-1.5 text-sm"
-                    />
-                  </label>
+                {(primaryAction.type === 'add_to_cart' ||
+                  primaryAction.type === 'subscribe') &&
+                canAddToCart ? (
+                  <div className="flex items-center gap-3">
+                    {quantityLabel ? (
+                      <label className="text-sm text-slate-600">
+                        {quantityLabel}
+                        <input
+                          type="number"
+                          min={1}
+                          max={99}
+                          value={quantity}
+                          onChange={(event) =>
+                            setQuantity(
+                              Math.max(1, Number(event.target.value) || 1),
+                            )
+                          }
+                          className="ml-2 w-20 rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+                        />
+                      </label>
+                    ) : null}
+                    <Button
+                      onClick={handlePrimaryAction}
+                      disabled={addMutation.isPending}
+                    >
+                      {addMutation.isPending && addToCartPending
+                        ? addToCartPending
+                        : primaryAction.label}
+                    </Button>
+                  </div>
+                ) : (
                   <Button
-                    onClick={handleAddToCart}
+                    onClick={handlePrimaryAction}
                     disabled={addMutation.isPending}
                   >
-                    {addMutation.isPending ? 'Ekleniyor…' : 'Sepete ekle'}
+                    {primaryAction.label}
                   </Button>
-                </div>
+                )}
                 {addError ? (
                   <p className="text-sm text-red-600">{addError}</p>
                 ) : null}
               </div>
             ) : null}
 
+            {product.deliveryMode === 'FREE_DOWNLOAD' ? (
+              <div id="product-downloads" className="mt-6 space-y-2">
+                <p className="text-sm font-medium text-slate-800">
+                  İndirilebilir dosyalar
+                </p>
+                {downloadFiles.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {downloadFiles.map((file, index) => {
+                      const href = slug
+                        ? buildFreeDownloadHref(slug, file.type)
+                        : '#';
+                      const isAvailable = file.available !== false && Boolean(file.type);
+
+                      return isAvailable ? (
+                        <a
+                          key={`${file.label}-${index}`}
+                          href={href}
+                          className="theme-btn-secondary inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"
+                        >
+                          {file.buttonLabel || file.label}
+                        </a>
+                      ) : (
+                        <Button
+                          key={`${file.label}-${index}`}
+                          type="button"
+                          variant="secondary"
+                          disabled
+                          title="İndirme dosyası yakında eklenecek"
+                        >
+                          {file.buttonLabel || file.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-theme-muted">
+                    İndirme dosyası yakında eklenecek.
+                  </p>
+                )}
+              </div>
+            ) : null}
+
             <div className="mt-6 flex flex-wrap gap-2">
-              {product.demoUrl ? (
+              {product.demoUrl && actionDemo ? (
                 <a
                   href={product.demoUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="theme-btn-secondary inline-block rounded-md border border-slate-200 px-3 py-2 text-sm"
                 >
-                  Demo
-                </a>
-              ) : null}
-              {product.purchaseUrl ? (
-                <a
-                  href={product.purchaseUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="theme-btn-primary inline-block rounded-md px-3 py-2 text-sm"
-                >
-                  Satın al
-                </a>
-              ) : null}
-              {product.downloadUrl ? (
-                <a
-                  href={product.downloadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="theme-btn-secondary inline-block rounded-md border border-slate-200 px-3 py-2 text-sm"
-                >
-                  İndir
+                  {actionDemo}
                 </a>
               ) : null}
             </div>

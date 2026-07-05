@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import type { ShippingMethodDto, ShippingMethodType } from '@/shared/types/api';
@@ -11,13 +11,16 @@ import {
   SHIPPING_METHOD_TYPE_LABELS,
   updateShippingMethod,
 } from '@/shared/api/shipping.api';
+import { AdminPanel } from '@/admin/components/AdminPanel';
 import { ShippingSubNav } from '@/admin/components/ShippingSubNav';
+import { TableQueryState } from '@/admin/components/TableQueryState';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
+  ConfirmDialog,
+  FilterBar,
   Input,
   Label,
   Modal,
@@ -25,7 +28,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
@@ -35,7 +37,9 @@ export function ShippingMethodsPage() {
   const queryClient = useQueryClient();
   const formModal = useDisclosure();
   const deleteModal = useDisclosure();
+  const { onSuccess, onError } = useAdminMutationFeedback();
 
+  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<ShippingMethodDto | null>(null);
   const [toDelete, setToDelete] = useState<ShippingMethodDto | null>(null);
   const [form, setForm] = useState({
@@ -51,6 +55,15 @@ export function ShippingMethodsPage() {
     queryKey: ['admin', 'shipping-methods'],
     queryFn: listShippingMethods,
   });
+
+  const filteredMethods = useMemo(() => {
+    const items = methodsQuery.data ?? [];
+    if (!search.trim()) return items;
+    const q = search.trim().toLowerCase();
+    return items.filter((method) =>
+      method.name.toLowerCase().includes(q),
+    );
+  }, [methodsQuery.data, search]);
 
   useEffect(() => {
     if (selected) {
@@ -117,24 +130,29 @@ export function ShippingMethodsPage() {
       invalidate();
       deleteModal.close();
       setToDelete(null);
+      onSuccess('Kargo yöntemi silindi.');
     },
+    onError: (error) => onError(error, 'Yöntem silinemedi.'),
   });
 
   return (
     <>
       <ShippingSubNav />
-      <Card padding="sm">
-        <CardHeader
-          title="Kargo yöntemleri"
-          description="Checkout için kargo ücreti seçenekleri"
-          action={
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              Yeni yöntem
-            </Button>
-          }
-        />
-
+      <AdminPanel
+        actions={
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Yeni yöntem
+          </Button>
+        }
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Yöntem adı ara…"
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -146,12 +164,14 @@ export function ShippingMethodsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {methodsQuery.isLoading ? (
-              <TableEmpty colSpan={5} message="Yükleniyor…" />
-            ) : (methodsQuery.data?.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={5} message="Henüz kargo yöntemi yok." />
-            ) : (
-              methodsQuery.data!.map((method) => (
+            <TableQueryState
+              colSpan={5}
+              isLoading={methodsQuery.isLoading}
+              isError={methodsQuery.isError}
+              isEmpty={filteredMethods.length === 0}
+              emptyMessage="Henüz kargo yöntemi yok."
+            >
+              {filteredMethods.map((method) => (
                 <TableRow key={method.id}>
                   <TableCell>{method.name}</TableCell>
                   <TableCell className="text-slate-500">
@@ -198,11 +218,11 @@ export function ShippingMethodsPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-      </Card>
+      </AdminPanel>
 
       <Modal
         isOpen={formModal.isOpen}
@@ -296,28 +316,19 @@ export function ShippingMethodsPage() {
         </div>
       </Modal>
 
-      <Modal
+      <ConfirmDialog
         isOpen={deleteModal.isOpen}
         onClose={deleteModal.close}
         title="Kargo yöntemini sil"
-        size="sm"
-      >
-        <p className="text-sm text-slate-600">
-          &quot;{toDelete?.name}&quot; silinecek. Devam edilsin mi?
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={deleteModal.close}>
-            İptal
-          </Button>
-          <Button
-            variant="danger"
-            disabled={deleteMutation.isPending}
-            onClick={() => deleteMutation.mutate()}
-          >
-            Sil
-          </Button>
-        </div>
-      </Modal>
+        description={
+          toDelete
+            ? `"${toDelete.name}" kalıcı olarak silinecek. Devam edilsin mi?`
+            : 'Bu kargo yöntemi kalıcı olarak silinecek.'
+        }
+        confirmLabel="Sil"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </>
   );
 }

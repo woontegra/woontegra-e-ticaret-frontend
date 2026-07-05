@@ -7,21 +7,21 @@ import {
   listProductReviews,
   PRODUCT_REVIEW_STATUS_LABELS,
 } from '@/shared/api/reviews.api';
+import { AdminPanel } from '@/admin/components/AdminPanel';
 import { ReviewsSubNav } from '@/admin/components/ReviewsSubNav';
 import { ProductReviewDetailPanel } from '@/admin/components/ProductReviewDetailPanel';
+import { TableQueryState } from '@/admin/components/TableQueryState';
 import { StarRatingDisplay } from '@/storefront/components/StarRating';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
   Drawer,
-  Input,
-  Label,
+  FilterBar,
+  Pagination,
+  Select,
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
@@ -60,6 +60,7 @@ export function ProductReviewsPage() {
 
   const total = reviewsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const items = reviewsQuery.data?.items ?? [];
 
   const handleStatusChange = (status: ProductReviewStatus | '') => {
     setStatusFilter(status);
@@ -68,28 +69,45 @@ export function ProductReviewsPage() {
 
   return (
     <>
-      <ReviewsSubNav
-        activeStatus={statusFilter}
-        onChange={handleStatusChange}
-      />
-      <Card padding="sm">
-        <CardHeader
-          title="Ürün yorumları"
-          description="Public formlardan gelen yorumlar onay sonrası yayına alınır"
-        />
-
-        <div className="mb-4">
-          <Label>Ara</Label>
-          <Input
-            value={search}
-            placeholder="Ad, e-posta, ürün, yorum…"
-            onChange={(e) => {
-              setSearch(e.target.value);
+      <ReviewsSubNav />
+      <AdminPanel
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={(value) => {
+              setSearch(value);
               setPage(1);
             }}
+            searchPlaceholder="Ad, e-posta, ürün, yorum…"
+          >
+            <Select
+              value={statusFilter}
+              onChange={(e) =>
+                handleStatusChange(e.target.value as ProductReviewStatus | '')
+              }
+              className="h-8 text-xs"
+            >
+              <option value="">Tüm durumlar</option>
+              {Object.entries(PRODUCT_REVIEW_STATUS_LABELS).map(
+                ([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ),
+              )}
+            </Select>
+          </FilterBar>
+        }
+        footer={
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
           />
-        </div>
-
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -102,12 +120,14 @@ export function ProductReviewsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {reviewsQuery.isLoading ? (
-              <TableEmpty colSpan={6} message="Yükleniyor…" />
-            ) : (reviewsQuery.data?.items.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={6} message="Bu filtrede yorum yok." />
-            ) : (
-              reviewsQuery.data!.items.map((item) => (
+            <TableQueryState
+              colSpan={6}
+              isLoading={reviewsQuery.isLoading}
+              isError={reviewsQuery.isError}
+              isEmpty={items.length === 0}
+              emptyMessage="Bu filtrede yorum yok."
+            >
+              {items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="text-slate-500">
                     {new Date(item.createdAt).toLocaleString('tr-TR')}
@@ -145,37 +165,11 @@ export function ProductReviewsPage() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-
-        {totalPages > 1 ? (
-          <div className="mt-4 flex items-center justify-between text-sm">
-            <span className="text-slate-500">
-              Toplam {total} yorum · Sayfa {page}/{totalPages}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Önceki
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Sonraki
-              </Button>
-            </div>
-          </div>
-        ) : null}
-      </Card>
+      </AdminPanel>
 
       <Drawer
         isOpen={Boolean(drawerId)}

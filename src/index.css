@@ -44,8 +44,40 @@
 }
 
 @layer components {
+  .admin-shell {
+    --admin-primary: 30 58 95;
+    --admin-primary-hover: 23 45 74;
+    --admin-primary-muted: 219 234 254;
+    --admin-accent: 37 99 235;
+    --admin-bg: 241 245 249;
+    --admin-surface: 255 255 255;
+    --admin-surface-muted: 248 250 252;
+    --admin-sidebar: 255 255 255;
+    --admin-sidebar-hover: 241 245 249;
+    --admin-sidebar-active: 30 58 95;
+    --admin-text: 15 23 42;
+    --admin-text-muted: 100 116 139;
+    --admin-border: 226 232 240;
+    --admin-border-subtle: 241 245 249;
+    --admin-shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+    --admin-shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.06), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+    --sidebar-width: 15rem;
+  }
+
   .admin-page {
-    @apply space-y-3;
+    @apply space-y-4;
+  }
+
+  .admin-shell .admin-table-head {
+    @apply bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-600;
+  }
+
+  .admin-shell input:focus,
+  .admin-shell select:focus,
+  .admin-shell textarea:focus {
+    outline: 2px solid rgb(var(--admin-accent) / 0.35);
+    outline-offset: 0;
+    border-color: rgb(var(--admin-accent));
   }
 
   .theme-storefront .theme-heading {

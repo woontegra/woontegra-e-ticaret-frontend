@@ -1,20 +1,27 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CompanySettingDto, SocialLinks } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
+import type { CompanySettingDto, ContactLabels, SocialLinks } from '@/shared/types/api';
 import {
   getAdminCompanySettings,
   updateAdminCompanySettings,
 } from '@/shared/api/settings.api';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import {
   Button,
   Card,
-  CardHeader,
   Input,
   Label,
   Textarea,
 } from '@/shared/ui';
+
+const contactLabelFields: Array<{ key: keyof ContactLabels; label: string }> = [
+  { key: 'company', label: 'Firma etiketi' },
+  { key: 'phone', label: 'Telefon etiketi' },
+  { key: 'email', label: 'E-posta etiketi' },
+  { key: 'support', label: 'Destek etiketi' },
+  { key: 'workingHours', label: 'Çalışma saatleri etiketi' },
+];
 
 const socialFields: Array<{ key: keyof SocialLinks; label: string }> = [
   { key: 'facebook', label: 'Facebook' },
@@ -27,8 +34,8 @@ const socialFields: Array<{ key: keyof SocialLinks; label: string }> = [
 
 export function CompanySettingsPage() {
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const [form, setForm] = useState<Partial<CompanySettingDto>>({});
-  const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const settingsQuery = useQuery({
@@ -46,16 +53,14 @@ export function CompanySettingsPage() {
     mutationFn: updateAdminCompanySettings,
     onSuccess: (data) => {
       setForm(data);
-      setMessage('Firma bilgileri kaydedildi.');
       setErrorMessage(null);
+      onSuccess('Firma bilgileri kaydedildi.');
       queryClient.invalidateQueries({ queryKey: ['admin', 'company-settings'] });
       queryClient.invalidateQueries({ queryKey: ['public', 'company-settings'] });
     },
     onError: (error) => {
-      setMessage(null);
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
+      const message = onError(error, 'Kayıt başarısız');
+      setErrorMessage(message);
     },
   });
 
@@ -64,6 +69,16 @@ export function CompanySettingsPage() {
       ...prev,
       socialLinks: {
         ...(prev.socialLinks ?? {}),
+        [key]: value,
+      },
+    }));
+  };
+
+  const updateContactLabel = (key: keyof ContactLabels, value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      contactLabels: {
+        ...(prev.contactLabels ?? {}),
         [key]: value,
       },
     }));
@@ -85,6 +100,8 @@ export function CompanySettingsPage() {
       email: form.email,
       supportEmail: form.supportEmail,
       workingHours: form.workingHours,
+      contactFormKey: form.contactFormKey ?? null,
+      contactLabels: form.contactLabels,
       currency: form.currency,
       defaultTaxRate: form.defaultTaxRate,
       socialLinks: form.socialLinks,
@@ -95,13 +112,14 @@ export function CompanySettingsPage() {
     return <p className="text-sm text-slate-500">Yükleniyor…</p>;
   }
 
+  if (settingsQuery.isError) {
+    return (
+      <p className="text-sm text-red-600">Firma ayarları yüklenemedi.</p>
+    );
+  }
+
   return (
     <Card padding="sm">
-      <CardHeader
-        title="Firma / İletişim Bilgileri"
-        description="Footer, iletişim sayfası ve yasal bilgiler için"
-      />
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
           <div>
@@ -260,6 +278,38 @@ export function CompanySettingsPage() {
           />
         </div>
 
+        <div className="space-y-3 border-t border-slate-100 pt-4">
+          <h2 className="text-sm font-semibold text-slate-900">İletişim sayfası</h2>
+          <div>
+            <Label htmlFor="contactFormKey">İletişim form anahtarı</Label>
+            <Input
+              id="contactFormKey"
+              value={form.contactFormKey ?? ''}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  contactFormKey: event.target.value || null,
+                }))
+              }
+              placeholder="CONTACT_FORM"
+            />
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {contactLabelFields.map((field) => (
+              <div key={field.key}>
+                <Label htmlFor={`contact-label-${field.key}`}>{field.label}</Label>
+                <Input
+                  id={`contact-label-${field.key}`}
+                  value={form.contactLabels?.[field.key] ?? ''}
+                  onChange={(event) =>
+                    updateContactLabel(field.key, event.target.value)
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="grid gap-3 md:grid-cols-2">
           <div>
             <Label htmlFor="currency">Para birimi</Label>
@@ -308,15 +358,8 @@ export function CompanySettingsPage() {
           </div>
         </div>
 
-        {message ? (
-          <p className="rounded-md bg-emerald-50 px-2 py-1.5 text-xs text-emerald-700">
-            {message}
-          </p>
-        ) : null}
         {errorMessage ? (
-          <p className="rounded-md bg-red-50 px-2 py-1.5 text-xs text-red-700">
-            {errorMessage}
-          </p>
+          <p className="text-xs text-red-600">{errorMessage}</p>
         ) : null}
 
         <Button type="submit" isLoading={saveMutation.isPending}>

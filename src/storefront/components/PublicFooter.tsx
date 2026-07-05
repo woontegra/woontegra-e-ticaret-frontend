@@ -1,18 +1,15 @@
 import { Link } from 'react-router-dom';
-import type { PublicFooterDto, PublicFooterLinkDto, SocialLinks } from '@/shared/types/api';
+import type { PublicFooterDto, PublicFooterLinkDto } from '@/shared/types/api';
+import { NewsletterForm } from '@/storefront/components/NewsletterForm';
 
 interface PublicFooterProps {
   footer?: PublicFooterDto;
 }
 
-const socialLabels: Record<keyof SocialLinks, string> = {
-  facebook: 'Facebook',
-  instagram: 'Instagram',
-  twitter: 'X',
-  linkedin: 'LinkedIn',
-  youtube: 'YouTube',
-  tiktok: 'TikTok',
-};
+function formatSocialLabel(key: string): string {
+  if (!key) return '';
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}
 
 function isExternalHref(href: string): boolean {
   return /^https?:\/\//i.test(href);
@@ -46,7 +43,7 @@ export function PublicFooter({ footer }: PublicFooterProps) {
 
   const socialEntries = Object.entries(footer.socialLinks ?? {}).filter(
     ([, url]) => Boolean(url),
-  ) as Array<[keyof SocialLinks, string]>;
+  );
 
   const hasBrand =
     footer.logoUrl ||
@@ -60,11 +57,16 @@ export function PublicFooter({ footer }: PublicFooterProps) {
   const hasIcons =
     footer.paymentIcons.length > 0 || footer.shippingIcons.length > 0;
 
+  const showNewsletter =
+    footer.showNewsletter &&
+    footer.newsletterPlaceholder?.trim() &&
+    footer.newsletterButtonLabel?.trim();
+
   if (
     !hasBrand &&
     !hasColumns &&
     !hasIcons &&
-    !footer.showNewsletter &&
+    !showNewsletter &&
     !footer.copyrightText
   ) {
     return null;
@@ -113,7 +115,7 @@ export function PublicFooter({ footer }: PublicFooterProps) {
                         rel="noopener noreferrer"
                         className="text-xs text-slate-600 underline-offset-2 hover:underline"
                       >
-                        {socialLabels[key]}
+                        {formatSocialLabel(key)}
                       </a>
                     </li>
                   ))}
@@ -144,23 +146,16 @@ export function PublicFooter({ footer }: PublicFooterProps) {
           ) : null}
         </div>
 
-        {footer.showNewsletter ? (
-          <div className="theme-card mt-8">
-            <form
-              className="flex max-w-md flex-col gap-2 sm:flex-row"
-              onSubmit={(event) => event.preventDefault()}
-            >
-              <input
-                type="email"
-                placeholder="E-posta"
-                aria-label="E-posta"
-                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
-              />
-              <button type="submit" className="theme-btn-primary text-sm">
-                Gönder
-              </button>
-            </form>
-          </div>
+        {showNewsletter ? (
+          <NewsletterForm
+            className="theme-card mt-8"
+            title={footer.newsletterTitle}
+            description={footer.newsletterDescription}
+            placeholder={footer.newsletterPlaceholder}
+            buttonLabel={footer.newsletterButtonLabel}
+            successMessage={footer.newsletterSuccessMessage}
+            source="footer"
+          />
         ) : null}
 
         {(hasIcons || footer.copyrightText) && (
@@ -172,7 +167,7 @@ export function PublicFooter({ footer }: PublicFooterProps) {
                     <img
                       key={icon.id}
                       src={icon.url}
-                      alt={icon.altText ?? 'Ödeme'}
+                      alt={icon.altText ?? ''}
                       className="h-6 object-contain"
                     />
                   ))}
@@ -184,7 +179,7 @@ export function PublicFooter({ footer }: PublicFooterProps) {
                     <img
                       key={icon.id}
                       src={icon.url}
-                      alt={icon.altText ?? 'Kargo'}
+                      alt={icon.altText ?? ''}
                       className="h-6 object-contain"
                     />
                   ))}

@@ -37,9 +37,15 @@ import { MailTemplatesPage } from '@/admin/pages/MailTemplatesPage';
 import { SeoSettingsPage } from '@/admin/pages/SeoSettingsPage';
 import { RedirectRulesPage } from '@/admin/pages/RedirectRulesPage';
 import { SeoLayout } from '@/admin/layout/SeoLayout';
-import { CouponsPage } from '@/admin/pages/CouponsPage';
 import { CampaignsPage } from '@/admin/pages/CampaignsPage';
+import { CouponsPage } from '@/admin/pages/CouponsPage';
 import { PromotionLayout } from '@/admin/layout/PromotionLayout';
+import { CampaignEditPage } from '@/admin/pages/CampaignEditPage';
+import { CouponEditPage } from '@/admin/pages/CouponEditPage';
+import { BrandEditPage } from '@/admin/pages/BrandEditPage';
+import { ProductCategoryEditPage } from '@/admin/pages/ProductCategoryEditPage';
+import { ProductAttributeEditPage } from '@/admin/pages/ProductAttributeEditPage';
+import { ProductVariantsPage } from '@/admin/pages/ProductVariantsPage';
 import { SiteSettingsPage } from '@/admin/pages/SiteSettingsPage';
 import { UnauthorizedPage } from '@/admin/pages/UnauthorizedPage';
 import { UsersPage } from '@/admin/pages/UsersPage';
@@ -87,10 +93,18 @@ export function AdminRoutes() {
           }
         />
         <Route
-          path="products"
+          path="products/categories/new"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
-              <ProductsListPage />
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <ProductCategoryEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="products/categories/:id"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <ProductCategoryEditPage />
             </RequireRole>
           }
         />
@@ -103,10 +117,42 @@ export function AdminRoutes() {
           }
         />
         <Route
+          path="products/brands/new"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <BrandEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="products/brands/:id"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <BrandEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
           path="products/brands"
           element={
             <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <BrandsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="products/attributes/new"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <ProductAttributeEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="products/attributes/:id"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <ProductAttributeEditPage />
             </RequireRole>
           }
         />
@@ -119,10 +165,42 @@ export function AdminRoutes() {
           }
         />
         <Route
+          path="products/variants"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
+              <ProductVariantsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="products/new"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
+              <ProductEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="products/:id/edit"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
+              <ProductEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
           path="products/:id"
           element={
             <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
               <ProductEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="products"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
+              <ProductsListPage />
             </RequireRole>
           }
         />
@@ -285,6 +363,38 @@ export function AdminRoutes() {
           element={
             <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
               <ReportsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="promotions/campaigns/new"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <CampaignEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="promotions/campaigns/:id/edit"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <CampaignEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="promotions/coupons/new"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <CouponEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="promotions/coupons/:id/edit"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <CouponEditPage />
             </RequireRole>
           }
         />

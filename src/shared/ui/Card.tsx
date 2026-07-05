@@ -16,7 +16,7 @@ export function Card({ children, className, padding = 'sm' }: CardProps) {
   return (
     <div
       className={cn(
-        'rounded-lg border border-slate-200 bg-white shadow-sm',
+        'rounded-md border border-slate-200 bg-white',
         paddingMap[padding],
         className,
       )}
@@ -34,7 +34,7 @@ interface CardHeaderProps {
 
 export function CardHeader({ title, description, action }: CardHeaderProps) {
   return (
-    <div className="mb-3 flex items-start justify-between gap-3">
+    <div className="mb-2 flex items-start justify-between gap-2">
       <div>
         <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
         {description ? (

@@ -67,12 +67,30 @@ export async function apiClient<T>(
 
   if (!response.ok) {
     const errorPayload = payload as ApiErrorResponse;
-    throw new ApiError(
+    const apiError = new ApiError(
       response.status,
       errorPayload.errors ?? [
         { code: 'REQUEST_FAILED', message: 'Request failed' },
       ],
     );
+
+    if (auth && typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (response.status === 401 && path.startsWith('/admin')) {
+        useAuthStore.getState().logout();
+        if (!path.startsWith('/admin/login')) {
+          window.location.assign('/admin/login');
+        }
+      } else if (
+        response.status === 403 &&
+        path.startsWith('/admin') &&
+        !path.startsWith('/admin/unauthorized')
+      ) {
+        window.location.assign('/admin/unauthorized');
+      }
+    }
+
+    throw apiError;
   }
 
   return (payload as ApiResponse<T>).data;

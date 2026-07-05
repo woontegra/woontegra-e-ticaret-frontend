@@ -14,6 +14,11 @@ export interface SaveFooterSettingPayload {
   email?: string | null;
   address?: string | null;
   showNewsletter?: boolean;
+  newsletterTitle?: string | null;
+  newsletterDescription?: string | null;
+  newsletterPlaceholder?: string | null;
+  newsletterButtonLabel?: string | null;
+  newsletterSuccessMessage?: string | null;
   copyrightText?: string | null;
   socialLinks?: FooterSettingDto['socialLinks'];
   paymentIconIds?: string[];
@@ -96,7 +101,8 @@ export function getPublicFooter() {
 
 export const FOOTER_LINK_TYPE_LABELS: Record<MenuItemType, string> = {
   PAGE: 'Sayfa',
-  CATEGORY: 'Kategori',
+  CATEGORY: 'Blog kategorisi',
+  PRODUCT_CATEGORY: 'Ürün kategorisi',
   PRODUCT: 'Ürün',
   BLOG: 'Blog yazısı',
   CUSTOM_URL: 'Özel URL',

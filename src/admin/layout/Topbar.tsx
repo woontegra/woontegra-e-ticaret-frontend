@@ -29,12 +29,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const pageTitle = getAdminPageTitle(location.pathname);
   const displayName = user?.name ?? user?.email ?? 'Kullanıcı';
 
-  const handleLogout = () => {
-    logoutMutation.mutate();
-  };
-
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3 lg:px-4">
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[rgb(var(--admin-border))] bg-[rgb(var(--admin-surface))] px-4 shadow-[var(--admin-shadow-sm)] lg:px-5">
       <Button
         variant="ghost"
         size="sm"
@@ -46,34 +42,39 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       </Button>
 
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-sm font-semibold text-slate-900">
+        <h1 className="truncate text-sm font-semibold text-[rgb(var(--admin-text))]">
           {pageTitle}
         </h1>
       </div>
 
       <div className="hidden max-w-xs flex-1 md:block">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          <Input placeholder="Hızlı ara…" className="h-8 pl-8 text-xs" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--admin-text-muted))]" />
+          <Input
+            placeholder="Hızlı ara…"
+            className="h-9 border-[rgb(var(--admin-border))] bg-[rgb(var(--admin-surface-muted))] pl-9 text-xs"
+          />
         </div>
       </div>
 
       <div className="flex items-center gap-1">
         <NotificationDropdown />
 
-        <div className="hidden items-center gap-2 border-l border-slate-200 pl-2 sm:flex">
+        <div className="hidden items-center gap-2 border-l border-[rgb(var(--admin-border))] pl-3 sm:flex">
           <div className="min-w-0 text-right">
-            <p className="truncate text-xs font-medium text-slate-900">
+            <p className="truncate text-xs font-medium text-[rgb(var(--admin-text))]">
               {displayName}
             </p>
             {user?.role ? (
-              <p className="truncate text-[10px] text-slate-500">{user.role}</p>
+              <p className="truncate text-[10px] text-[rgb(var(--admin-text-muted))]">
+                {user.role}
+              </p>
             ) : null}
           </div>
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleLogout}
+            onClick={() => logoutMutation.mutate()}
             aria-label="Çıkış yap"
           >
             <LogOut className="h-4 w-4" />

@@ -1,136 +1,68 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import type { ProductCategoryDto } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import {
-  createProductCategory,
   deleteProductCategory,
   listProductCategories,
-  slugifyClient,
-  updateProductCategory,
 } from '@/shared/api/products.api';
-import { ProductsSubNav } from '@/admin/components/ProductsSubNav';
+import { ListPageShell } from '@/admin/components/ui';
+import { TableQueryState } from '@/admin/components/TableQueryState';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
-  Input,
-  Label,
-  MediaField,
-  Modal,
-  Select,
+  ConfirmDialog,
+  FilterBar,
+  Pagination,
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
-  Textarea,
 } from '@/shared/ui';
 
-export function ProductCategoriesPage() {
-  const queryClient = useQueryClient();
-  const formModal = useDisclosure();
-  const deleteModal = useDisclosure();
+const PAGE_SIZE = 20;
 
-  const [selected, setSelected] = useState<ProductCategoryDto | null>(null);
+export function ProductCategoriesPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const deleteModal = useDisclosure();
+  const { onSuccess, onError } = useAdminMutationFeedback();
+
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [toDelete, setToDelete] = useState<ProductCategoryDto | null>(null);
-  const [form, setForm] = useState({
-    parentId: '',
-    name: '',
-    slug: '',
-    description: '',
-    imageId: null as string | null,
-    bannerImageId: null as string | null,
-    seoTitle: '',
-    seoDescription: '',
-    sortOrder: 0,
-    isActive: true,
-  });
-  const [slugTouched, setSlugTouched] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const queryParams = useMemo(
+    () => ({
+      search: search || undefined,
+      page,
+      limit: PAGE_SIZE,
+    }),
+    [search, page],
+  );
 
   const categoriesQuery = useQuery({
-    queryKey: ['admin', 'product-categories'],
-    queryFn: listProductCategories,
+    queryKey: ['admin', 'product-categories', queryParams],
+    queryFn: () => listProductCategories(queryParams),
   });
 
+  const items = categoriesQuery.data?.items ?? [];
+  const total = categoriesQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   useEffect(() => {
-    if (selected) {
-      setForm({
-        parentId: selected.parentId ?? '',
-        name: selected.name,
-        slug: selected.slug,
-        description: selected.description ?? '',
-        imageId: selected.imageId,
-        bannerImageId: selected.bannerImageId,
-        seoTitle: selected.seoTitle ?? '',
-        seoDescription: selected.seoDescription ?? '',
-        sortOrder: selected.sortOrder,
-        isActive: selected.isActive,
-      });
-      setSlugTouched(true);
-    }
-  }, [selected]);
+    setPage(1);
+  }, [search]);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['admin', 'product-categories'] });
     queryClient.invalidateQueries({ queryKey: ['public', 'categories'] });
   };
-
-  const openCreate = () => {
-    setSelected(null);
-    setForm({
-      parentId: '',
-      name: '',
-      slug: '',
-      description: '',
-      imageId: null,
-      bannerImageId: null,
-      seoTitle: '',
-      seoDescription: '',
-      sortOrder: 0,
-      isActive: true,
-    });
-    setSlugTouched(false);
-    formModal.open();
-  };
-
-  const saveMutation = useMutation({
-    mutationFn: () => {
-      const payload = {
-        parentId: form.parentId || null,
-        name: form.name,
-        slug: form.slug,
-        description: form.description || null,
-        imageId: form.imageId,
-        bannerImageId: form.bannerImageId,
-        seoTitle: form.seoTitle || null,
-        seoDescription: form.seoDescription || null,
-        sortOrder: form.sortOrder,
-        isActive: form.isActive,
-      };
-
-      return selected
-        ? updateProductCategory(selected.id, payload)
-        : createProductCategory(payload);
-    },
-    onSuccess: () => {
-      invalidate();
-      formModal.close();
-      setSelected(null);
-      setErrorMessage(null);
-    },
-    onError: (error) => {
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
-    },
-  });
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteProductCategory(toDelete!.id),
@@ -138,24 +70,42 @@ export function ProductCategoriesPage() {
       invalidate();
       deleteModal.close();
       setToDelete(null);
+      onSuccess('Kategori silindi.');
     },
+    onError: (error) => onError(error, 'Kategori silinemedi.'),
   });
 
   return (
     <>
-      <ProductsSubNav />
-      <Card padding="sm">
-        <CardHeader
-          title="Ürün kategorileri"
-          description="Ürün ve yazılım kategorilerini yönetin"
-          action={
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              Yeni kategori
-            </Button>
-          }
-        />
-
+      <ListPageShell
+        title="Kategoriler"
+        description="Ürün kategorilerini ve hiyerarşisini yönetin"
+        actions={
+          <Button
+            size="sm"
+            onClick={() => navigate('/admin/products/categories/new')}
+          >
+            <Plus className="h-4 w-4" />
+            Yeni kategori
+          </Button>
+        }
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Ad veya slug ara…"
+          />
+        }
+        footer={
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -166,15 +116,19 @@ export function ProductCategoriesPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {categoriesQuery.isLoading ? (
-              <TableEmpty colSpan={4} message="Yükleniyor…" />
-            ) : (categoriesQuery.data?.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={4} message="Henüz kategori yok." />
-            ) : (
-              categoriesQuery.data!.map((category) => (
+            <TableQueryState
+              colSpan={4}
+              isLoading={categoriesQuery.isLoading}
+              isError={categoriesQuery.isError}
+              isEmpty={items.length === 0}
+              emptyMessage="Henüz kategori yok."
+            >
+              {items.map((category) => (
                 <TableRow key={category.id}>
-                  <TableCell>{category.name}</TableCell>
-                  <TableCell className="text-slate-500">{category.slug}</TableCell>
+                  <TableCell className="font-medium">{category.name}</TableCell>
+                  <TableCell className="text-[rgb(var(--admin-text-muted))]">
+                    {category.slug}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={category.isActive ? 'success' : 'default'}>
                       {category.isActive ? 'Aktif' : 'Pasif'}
@@ -185,10 +139,9 @@ export function ProductCategoriesPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setSelected(category);
-                          formModal.open();
-                        }}
+                        onClick={() =>
+                          navigate(`/admin/products/categories/${category.id}`)
+                        }
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -205,152 +158,25 @@ export function ProductCategoriesPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-      </Card>
+      </ListPageShell>
 
-      <Modal
-        isOpen={formModal.isOpen}
-        onClose={formModal.close}
-        title={selected ? 'Kategori düzenle' : 'Yeni kategori'}
-        size="lg"
-      >
-        <div className="grid gap-3 md:grid-cols-2">
-          <div>
-            <Label>Ad</Label>
-            <Input
-              value={form.name}
-              onChange={(event) => {
-                const name = event.target.value;
-                setForm((prev) => ({
-                  ...prev,
-                  name,
-                  slug: slugTouched ? prev.slug : slugifyClient(name),
-                }));
-              }}
-            />
-          </div>
-          <div>
-            <Label>Slug</Label>
-            <Input
-              value={form.slug}
-              onChange={(event) => {
-                setSlugTouched(true);
-                setForm((prev) => ({
-                  ...prev,
-                  slug: slugifyClient(event.target.value),
-                }));
-              }}
-            />
-          </div>
-          <div>
-            <Label>Üst kategori</Label>
-            <Select
-              value={form.parentId}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, parentId: event.target.value }))
-              }
-            >
-              <option value="">Yok</option>
-              {categoriesQuery.data
-                ?.filter((category) => category.id !== selected?.id)
-                .map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-            </Select>
-          </div>
-          <div>
-            <Label>Sıra</Label>
-            <Input
-              type="number"
-              value={form.sortOrder}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  sortOrder: Number(event.target.value),
-                }))
-              }
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Label>Açıklama</Label>
-            <Textarea
-              rows={3}
-              value={form.description}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, description: event.target.value }))
-              }
-            />
-          </div>
-          <MediaField
-            label="Görsel"
-            value={form.imageId}
-            onChange={(value) =>
-              setForm((prev) => ({ ...prev, imageId: value }))
-            }
-            folder="products"
-          />
-          <MediaField
-            label="Banner görseli"
-            value={form.bannerImageId}
-            onChange={(value) =>
-              setForm((prev) => ({ ...prev, bannerImageId: value }))
-            }
-            folder="products"
-          />
-          <div className="md:col-span-2 flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, isActive: event.target.checked }))
-              }
-            />
-            <Label>Aktif</Label>
-          </div>
-        </div>
-        {errorMessage ? (
-          <p className="mt-3 text-sm text-red-600">{errorMessage}</p>
-        ) : null}
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={formModal.close}>
-            İptal
-          </Button>
-          <Button
-            disabled={saveMutation.isPending}
-            onClick={() => saveMutation.mutate()}
-          >
-            Kaydet
-          </Button>
-        </div>
-      </Modal>
-
-      <Modal
+      <ConfirmDialog
         isOpen={deleteModal.isOpen}
         onClose={deleteModal.close}
         title="Kategoriyi sil"
-        size="sm"
-      >
-        <p className="text-sm text-slate-600">
-          &quot;{toDelete?.name}&quot; silinecek. Devam edilsin mi?
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={deleteModal.close}>
-            İptal
-          </Button>
-          <Button
-            variant="danger"
-            disabled={deleteMutation.isPending}
-            onClick={() => deleteMutation.mutate()}
-          >
-            Sil
-          </Button>
-        </div>
-      </Modal>
+        description={
+          toDelete
+            ? `"${toDelete.name}" kalıcı olarak silinecek. Devam edilsin mi?`
+            : 'Bu kategori kalıcı olarak silinecek.'
+        }
+        confirmLabel="Sil"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '@/shared/api/client';
 import { getPublicPage } from '@/shared/api/pages.api';
+import { STALE_TIME } from '@/shared/lib/query-client';
 
 export function useOptionalPublicPage(slug: string | undefined) {
   return useQuery({
@@ -17,5 +18,6 @@ export function useOptionalPublicPage(slug: string | undefined) {
     },
     enabled: Boolean(slug),
     retry: false,
+    staleTime: STALE_TIME.public,
   });
 }

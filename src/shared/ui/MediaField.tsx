@@ -3,6 +3,7 @@ import { ImageIcon, X } from 'lucide-react';
 import { getMedia, isImageMedia } from '@/shared/api/media.api';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import { MediaPicker } from '@/shared/components/MediaPicker';
+import type { MediaUsageType } from '@/shared/types/api';
 import { Button, Label } from '@/shared/ui';
 
 interface MediaFieldProps {
@@ -11,6 +12,7 @@ interface MediaFieldProps {
   onChange: (value: string | null) => void;
   description?: string;
   folder?: string;
+  usageType?: MediaUsageType;
 }
 
 export function MediaField({
@@ -19,6 +21,7 @@ export function MediaField({
   onChange,
   description,
   folder = 'general',
+  usageType = 'IMAGE',
 }: MediaFieldProps) {
   const picker = useDisclosure();
 
@@ -52,7 +55,7 @@ export function MediaField({
 
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={picker.open}>
-            Medya seç
+            Görsel seç
           </Button>
           {value ? (
             <Button
@@ -76,6 +79,7 @@ export function MediaField({
         isOpen={picker.isOpen}
         onClose={picker.close}
         folder={folder}
+        usageType={usageType}
         onSelect={(asset) => onChange(asset.id)}
       />
     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import type { FormDefinitionDto, FormFieldDefinitionDto } from '@/shared/types/api';
@@ -10,13 +10,16 @@ import {
   listFormDefinitions,
   updateFormDefinition,
 } from '@/shared/api/contact.api';
+import { AdminPanel } from '@/admin/components/AdminPanel';
 import { ContactSubNav } from '@/admin/components/ContactSubNav';
+import { TableQueryState } from '@/admin/components/TableQueryState';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
+  ConfirmDialog,
+  FilterBar,
   Input,
   Label,
   Modal,
@@ -24,7 +27,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
@@ -38,13 +40,17 @@ export function FormDefinitionsPage() {
   const queryClient = useQueryClient();
   const formModal = useDisclosure();
   const deleteModal = useDisclosure();
+  const { onSuccess, onError } = useAdminMutationFeedback();
 
+  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<FormDefinitionDto | null>(null);
   const [toDelete, setToDelete] = useState<FormDefinitionDto | null>(null);
   const [form, setForm] = useState({
     name: '',
     key: '',
     isActive: true,
+    successMessage: '',
+    submitButtonLabel: '',
     fields: [emptyField()] as FormFieldDefinitionDto[],
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -54,12 +60,25 @@ export function FormDefinitionsPage() {
     queryFn: listFormDefinitions,
   });
 
+  const filteredForms = useMemo(() => {
+    const items = formsQuery.data ?? [];
+    if (!search.trim()) return items;
+    const q = search.trim().toLowerCase();
+    return items.filter(
+      (item) =>
+        item.name.toLowerCase().includes(q) ||
+        item.key.toLowerCase().includes(q),
+    );
+  }, [formsQuery.data, search]);
+
   useEffect(() => {
     if (selected) {
       setForm({
         name: selected.name,
         key: selected.key,
         isActive: selected.isActive,
+        successMessage: selected.successMessage ?? '',
+        submitButtonLabel: selected.submitButtonLabel ?? '',
         fields: selected.fields.length ? selected.fields : [emptyField()],
       });
     }
@@ -70,7 +89,7 @@ export function FormDefinitionsPage() {
 
   const openCreate = () => {
     setSelected(null);
-    setForm({ name: '', key: '', isActive: true, fields: [emptyField()] });
+    setForm({ name: '', key: '', isActive: true, successMessage: '', submitButtonLabel: '', fields: [emptyField()] });
     formModal.open();
   };
 
@@ -80,6 +99,8 @@ export function FormDefinitionsPage() {
         name: form.name,
         key: form.key,
         isActive: form.isActive,
+        successMessage: form.successMessage || null,
+        submitButtonLabel: form.submitButtonLabel || null,
         fields: form.fields,
       };
       return selected
@@ -105,7 +126,9 @@ export function FormDefinitionsPage() {
       invalidate();
       deleteModal.close();
       setToDelete(null);
+      onSuccess('Form tanımı silindi.');
     },
+    onError: (error) => onError(error, 'Form silinemedi.'),
   });
 
   const updateField = (
@@ -123,18 +146,21 @@ export function FormDefinitionsPage() {
   return (
     <>
       <ContactSubNav />
-      <Card padding="sm">
-        <CardHeader
-          title="Form tanımları"
-          description="Builder CONTACT_FORM bloğu ve özel formlar için"
-          action={
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              Yeni form
-            </Button>
-          }
-        />
-
+      <AdminPanel
+        actions={
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Yeni form
+          </Button>
+        }
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Ad veya anahtar ara…"
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -146,12 +172,14 @@ export function FormDefinitionsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {formsQuery.isLoading ? (
-              <TableEmpty colSpan={5} message="Yükleniyor…" />
-            ) : (formsQuery.data?.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={5} message="Henüz form tanımı yok." />
-            ) : (
-              formsQuery.data!.map((item) => (
+            <TableQueryState
+              colSpan={5}
+              isLoading={formsQuery.isLoading}
+              isError={formsQuery.isError}
+              isEmpty={filteredForms.length === 0}
+              emptyMessage="Henüz form tanımı yok."
+            >
+              {filteredForms.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>{item.name}</TableCell>
                   <TableCell className="font-mono text-xs">{item.key}</TableCell>
@@ -186,11 +214,11 @@ export function FormDefinitionsPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-      </Card>
+      </AdminPanel>
 
       <Modal
         isOpen={formModal.isOpen}
@@ -217,6 +245,27 @@ export function FormDefinitionsPage() {
                 }))
               }
               placeholder="iletisim-formu"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div>
+            <Label>Gönder butonu metni</Label>
+            <Input
+              value={form.submitButtonLabel}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, submitButtonLabel: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <Label>Başarı mesajı</Label>
+            <Input
+              value={form.successMessage}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, successMessage: e.target.value }))
+              }
             />
           </div>
         </div>
@@ -325,28 +374,19 @@ export function FormDefinitionsPage() {
         </div>
       </Modal>
 
-      <Modal
+      <ConfirmDialog
         isOpen={deleteModal.isOpen}
         onClose={deleteModal.close}
         title="Formu sil"
-        size="sm"
-      >
-        <p className="text-sm text-slate-600">
-          &quot;{toDelete?.name}&quot; silinecek. Devam edilsin mi?
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={deleteModal.close}>
-            İptal
-          </Button>
-          <Button
-            variant="danger"
-            disabled={deleteMutation.isPending}
-            onClick={() => deleteMutation.mutate()}
-          >
-            Sil
-          </Button>
-        </div>
-      </Modal>
+        description={
+          toDelete
+            ? `"${toDelete.name}" kalıcı olarak silinecek. Devam edilsin mi?`
+            : 'Bu form kalıcı olarak silinecek.'
+        }
+        confirmLabel="Sil"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </>
   );
 }

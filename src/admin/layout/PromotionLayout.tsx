@@ -1,10 +1,15 @@
 import { Outlet } from 'react-router-dom';
-import { PromotionSubNav } from '@/admin/components/PromotionSubNav';
+import { AdminSubNav } from '@/admin/components/AdminSubNav';
+
+const links = [
+  { label: 'Kampanyalar', path: '/admin/promotions/campaigns', end: true },
+  { label: 'Kuponlar', path: '/admin/promotions/coupons' },
+];
 
 export function PromotionLayout() {
   return (
-    <div>
-      <PromotionSubNav />
+    <div className="space-y-2">
+      <AdminSubNav links={links} ariaLabel="Pazarlama sekmeleri" />
       <Outlet />
     </div>
   );

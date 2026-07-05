@@ -3,6 +3,7 @@ import { ImageIcon, X } from 'lucide-react';
 import { getMedia, isImageMedia } from '@/shared/api/media.api';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import { MediaPicker } from '@/shared/components/MediaPicker';
+import type { MediaUsageType } from '@/shared/types/api';
 import { Button, Label } from '@/shared/ui';
 
 interface MediaMultiFieldProps {
@@ -11,6 +12,7 @@ interface MediaMultiFieldProps {
   onChange: (value: string[]) => void;
   description?: string;
   folder?: string;
+  usageType?: MediaUsageType;
 }
 
 function MediaPreview({ id, onRemove }: { id: string; onRemove: () => void }) {
@@ -50,6 +52,7 @@ export function MediaMultiField({
   onChange,
   description,
   folder = 'general',
+  usageType = 'IMAGE',
 }: MediaMultiFieldProps) {
   const picker = useDisclosure();
 
@@ -76,7 +79,7 @@ export function MediaMultiField({
           />
         ))}
         <Button type="button" variant="secondary" size="sm" onClick={picker.open}>
-          İkon ekle
+          Galeri görseli ekle
         </Button>
       </div>
 
@@ -84,6 +87,7 @@ export function MediaMultiField({
         isOpen={picker.isOpen}
         onClose={picker.close}
         folder={folder}
+        usageType={usageType}
         onSelect={handleSelect}
       />
     </div>

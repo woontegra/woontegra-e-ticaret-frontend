@@ -1,121 +1,68 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import type { BrandDto } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import {
-  createBrand,
   deleteBrand,
   listBrands,
-  slugifyClient,
-  updateBrand,
 } from '@/shared/api/products.api';
-import { ProductsSubNav } from '@/admin/components/ProductsSubNav';
+import { ListPageShell } from '@/admin/components/ui';
+import { TableQueryState } from '@/admin/components/TableQueryState';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
-  Input,
-  Label,
-  MediaField,
-  Modal,
+  ConfirmDialog,
+  FilterBar,
+  Pagination,
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
-  Textarea,
 } from '@/shared/ui';
 
-export function BrandsPage() {
-  const queryClient = useQueryClient();
-  const formModal = useDisclosure();
-  const deleteModal = useDisclosure();
+const PAGE_SIZE = 20;
 
-  const [selected, setSelected] = useState<BrandDto | null>(null);
+export function BrandsPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const deleteModal = useDisclosure();
+  const { onSuccess, onError } = useAdminMutationFeedback();
+
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [toDelete, setToDelete] = useState<BrandDto | null>(null);
-  const [form, setForm] = useState({
-    name: '',
-    slug: '',
-    logoId: null as string | null,
-    description: '',
-    seoTitle: '',
-    seoDescription: '',
-    isActive: true,
-  });
-  const [slugTouched, setSlugTouched] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const queryParams = useMemo(
+    () => ({
+      search: search || undefined,
+      page,
+      limit: PAGE_SIZE,
+    }),
+    [search, page],
+  );
 
   const brandsQuery = useQuery({
-    queryKey: ['admin', 'brands'],
-    queryFn: listBrands,
+    queryKey: ['admin', 'brands', queryParams],
+    queryFn: () => listBrands(queryParams),
   });
+
+  const items = brandsQuery.data?.items ?? [];
+  const total = brandsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   useEffect(() => {
-    if (selected) {
-      setForm({
-        name: selected.name,
-        slug: selected.slug,
-        logoId: selected.logoId,
-        description: selected.description ?? '',
-        seoTitle: selected.seoTitle ?? '',
-        seoDescription: selected.seoDescription ?? '',
-        isActive: selected.isActive,
-      });
-      setSlugTouched(true);
-    }
-  }, [selected]);
+    setPage(1);
+  }, [search]);
 
-  const invalidate = () =>
+  const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['admin', 'brands'] });
-
-  const openCreate = () => {
-    setSelected(null);
-    setForm({
-      name: '',
-      slug: '',
-      logoId: null,
-      description: '',
-      seoTitle: '',
-      seoDescription: '',
-      isActive: true,
-    });
-    setSlugTouched(false);
-    formModal.open();
+    queryClient.invalidateQueries({ queryKey: ['public', 'brands'] });
   };
-
-  const saveMutation = useMutation({
-    mutationFn: () => {
-      const payload = {
-        name: form.name,
-        slug: form.slug,
-        logoId: form.logoId,
-        description: form.description || null,
-        seoTitle: form.seoTitle || null,
-        seoDescription: form.seoDescription || null,
-        isActive: form.isActive,
-      };
-
-      return selected
-        ? updateBrand(selected.id, payload)
-        : createBrand(payload);
-    },
-    onSuccess: () => {
-      invalidate();
-      formModal.close();
-      setSelected(null);
-      setErrorMessage(null);
-    },
-    onError: (error) => {
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
-    },
-  });
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteBrand(toDelete!.id),
@@ -123,24 +70,39 @@ export function BrandsPage() {
       invalidate();
       deleteModal.close();
       setToDelete(null);
+      onSuccess('Marka silindi.');
     },
+    onError: (error) => onError(error, 'Marka silinemedi.'),
   });
 
   return (
     <>
-      <ProductsSubNav />
-      <Card padding="sm">
-        <CardHeader
-          title="Markalar"
-          description="Ürün markalarını yönetin"
-          action={
-            <Button size="sm" onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              Yeni marka
-            </Button>
-          }
-        />
-
+      <ListPageShell
+        title="Markalar"
+        description="Ürün markalarını ve logo bilgilerini yönetin"
+        actions={
+          <Button size="sm" onClick={() => navigate('/admin/products/brands/new')}>
+            <Plus className="h-4 w-4" />
+            Yeni marka
+          </Button>
+        }
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Ad veya slug ara…"
+          />
+        }
+        footer={
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -151,15 +113,19 @@ export function BrandsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {brandsQuery.isLoading ? (
-              <TableEmpty colSpan={4} message="Yükleniyor…" />
-            ) : (brandsQuery.data?.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={4} message="Henüz marka yok." />
-            ) : (
-              brandsQuery.data!.map((brand) => (
+            <TableQueryState
+              colSpan={4}
+              isLoading={brandsQuery.isLoading}
+              isError={brandsQuery.isError}
+              isEmpty={items.length === 0}
+              emptyMessage="Henüz marka yok."
+            >
+              {items.map((brand) => (
                 <TableRow key={brand.id}>
-                  <TableCell>{brand.name}</TableCell>
-                  <TableCell className="text-slate-500">{brand.slug}</TableCell>
+                  <TableCell className="font-medium">{brand.name}</TableCell>
+                  <TableCell className="text-[rgb(var(--admin-text-muted))]">
+                    {brand.slug}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={brand.isActive ? 'success' : 'default'}>
                       {brand.isActive ? 'Aktif' : 'Pasif'}
@@ -170,10 +136,9 @@ export function BrandsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setSelected(brand);
-                          formModal.open();
-                        }}
+                        onClick={() =>
+                          navigate(`/admin/products/brands/${brand.id}`)
+                        }
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -190,115 +155,25 @@ export function BrandsPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-      </Card>
+      </ListPageShell>
 
-      <Modal
-        isOpen={formModal.isOpen}
-        onClose={formModal.close}
-        title={selected ? 'Marka düzenle' : 'Yeni marka'}
-        size="lg"
-      >
-        <div className="grid gap-3 md:grid-cols-2">
-          <div>
-            <Label>Ad</Label>
-            <Input
-              value={form.name}
-              onChange={(event) => {
-                const name = event.target.value;
-                setForm((prev) => ({
-                  ...prev,
-                  name,
-                  slug: slugTouched ? prev.slug : slugifyClient(name),
-                }));
-              }}
-            />
-          </div>
-          <div>
-            <Label>Slug</Label>
-            <Input
-              value={form.slug}
-              onChange={(event) => {
-                setSlugTouched(true);
-                setForm((prev) => ({
-                  ...prev,
-                  slug: slugifyClient(event.target.value),
-                }));
-              }}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Label>Açıklama</Label>
-            <Textarea
-              rows={3}
-              value={form.description}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, description: event.target.value }))
-              }
-            />
-          </div>
-          <div className="md:col-span-2">
-            <MediaField
-              label="Logo"
-              value={form.logoId}
-              onChange={(value) =>
-                setForm((prev) => ({ ...prev, logoId: value }))
-              }
-              folder="products"
-            />
-          </div>
-          <div className="md:col-span-2 flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, isActive: event.target.checked }))
-              }
-            />
-            <Label>Aktif</Label>
-          </div>
-        </div>
-        {errorMessage ? (
-          <p className="mt-3 text-sm text-red-600">{errorMessage}</p>
-        ) : null}
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={formModal.close}>
-            İptal
-          </Button>
-          <Button
-            disabled={saveMutation.isPending}
-            onClick={() => saveMutation.mutate()}
-          >
-            Kaydet
-          </Button>
-        </div>
-      </Modal>
-
-      <Modal
+      <ConfirmDialog
         isOpen={deleteModal.isOpen}
         onClose={deleteModal.close}
         title="Markayı sil"
-        size="sm"
-      >
-        <p className="text-sm text-slate-600">
-          &quot;{toDelete?.name}&quot; silinecek. Devam edilsin mi?
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={deleteModal.close}>
-            İptal
-          </Button>
-          <Button
-            variant="danger"
-            disabled={deleteMutation.isPending}
-            onClick={() => deleteMutation.mutate()}
-          >
-            Sil
-          </Button>
-        </div>
-      </Modal>
+        description={
+          toDelete
+            ? `"${toDelete.name}" kalıcı olarak silinecek. Devam edilsin mi?`
+            : 'Bu marka kalıcı olarak silinecek.'
+        }
+        confirmLabel="Sil"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </>
   );
 }

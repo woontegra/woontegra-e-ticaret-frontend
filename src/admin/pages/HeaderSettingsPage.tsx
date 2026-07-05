@@ -3,7 +3,6 @@ import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import type { HeaderSettingDto } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import {
   getHeaderSettings,
   HEADER_LOGO_POSITION_LABELS,
@@ -11,6 +10,7 @@ import {
   updateHeaderSettings,
 } from '@/shared/api/header.api';
 import { getAdminSiteSettings } from '@/shared/api/settings.api';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import {
   Button,
   Card,
@@ -48,8 +48,8 @@ function ColorField({
 
 export function HeaderSettingsPage() {
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const [form, setForm] = useState<HeaderSettingDto | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const settingsQuery = useQuery({
@@ -72,16 +72,14 @@ export function HeaderSettingsPage() {
     mutationFn: updateHeaderSettings,
     onSuccess: (data) => {
       setForm(data);
-      setMessage('Header ayarları kaydedildi.');
       setErrorMessage(null);
+      onSuccess('Header ayarları kaydedildi.');
       queryClient.invalidateQueries({ queryKey: ['admin', 'header-settings'] });
       queryClient.invalidateQueries({ queryKey: ['public', 'header-settings'] });
     },
     onError: (error) => {
-      setMessage(null);
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
+      const message = onError(error, 'Kayıt başarısız');
+      setErrorMessage(message);
     },
   });
 
@@ -105,6 +103,10 @@ export function HeaderSettingsPage() {
       announcementEnabled: form.announcementEnabled,
       announcementText: form.announcementText,
       announcementLink: form.announcementLink,
+      accountUrl: form.accountUrl,
+      searchPlaceholder: form.searchPlaceholder,
+      cartUrl: form.cartUrl,
+      favoritesUrl: form.favoritesUrl,
     });
   };
 
@@ -242,6 +244,72 @@ export function HeaderSettingsPage() {
       </Card>
 
       <Card padding="sm">
+        <CardHeader title="Bağlantılar ve arama" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <Label htmlFor="account-url">Hesap ikonu URL</Label>
+            <Input
+              id="account-url"
+              value={form.accountUrl ?? ''}
+              onChange={(event) =>
+                setForm((prev) =>
+                  prev
+                    ? { ...prev, accountUrl: event.target.value || null }
+                    : prev,
+                )
+              }
+              placeholder="/admin/login veya https://..."
+            />
+          </div>
+          <div>
+            <Label htmlFor="cart-url">Sepet URL</Label>
+            <Input
+              id="cart-url"
+              value={form.cartUrl ?? ''}
+              onChange={(event) =>
+                setForm((prev) =>
+                  prev ? { ...prev, cartUrl: event.target.value || null } : prev,
+                )
+              }
+              placeholder="/sepet"
+            />
+          </div>
+          <div>
+            <Label htmlFor="favorites-url">Favoriler URL</Label>
+            <Input
+              id="favorites-url"
+              value={form.favoritesUrl ?? ''}
+              onChange={(event) =>
+                setForm((prev) =>
+                  prev
+                    ? { ...prev, favoritesUrl: event.target.value || null }
+                    : prev,
+                )
+              }
+              placeholder="/favoriler veya https://..."
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Favoriler ikonu yalnızca bu alan doluysa görünür.
+            </p>
+          </div>
+          <div className="md:col-span-2">
+            <Label htmlFor="search-placeholder">Arama placeholder</Label>
+            <Input
+              id="search-placeholder"
+              value={form.searchPlaceholder ?? ''}
+              onChange={(event) =>
+                setForm((prev) =>
+                  prev
+                    ? { ...prev, searchPlaceholder: event.target.value || null }
+                    : prev,
+                )
+              }
+            />
+          </div>
+        </div>
+      </Card>
+
+      <Card padding="sm">
         <CardHeader title="Top bar" description="Header üstündeki ince bilgi şeridi" />
         <label className="mb-3 flex items-center gap-2 text-sm text-slate-700">
           <input
@@ -343,7 +411,6 @@ export function HeaderSettingsPage() {
         <Button type="submit" isLoading={saveMutation.isPending}>
           Kaydet
         </Button>
-        {message ? <p className="text-sm text-green-600">{message}</p> : null}
         {errorMessage ? (
           <p className="text-sm text-red-600">{errorMessage}</p>
         ) : null}

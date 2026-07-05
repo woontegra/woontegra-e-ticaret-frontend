@@ -81,12 +81,14 @@ export function DashboardPage() {
     })) ?? [];
 
   return (
-    <div className="space-y-4">
-      <Card padding="sm">
+    <div className="admin-page space-y-5">
+      <div className="rounded-lg border border-[rgb(var(--admin-border))] bg-[rgb(var(--admin-surface))] p-4 shadow-[var(--admin-shadow-sm)]">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Site özeti</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="text-base font-semibold text-[rgb(var(--admin-text))]">
+              Site özeti
+            </h2>
+            <p className="text-sm text-[rgb(var(--admin-text-muted))]">
               Seçili dönemdeki satış ve operasyon metrikleri
             </p>
           </div>
@@ -97,9 +99,9 @@ export function DashboardPage() {
             onDateToChange={setDateTo}
           />
         </div>
-      </Card>
+      </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <MetricCard
           label="Toplam satış"
           value={
@@ -152,8 +154,8 @@ export function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-2">
-        <Card padding="sm">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card padding="sm" className="border-[rgb(var(--admin-border))] shadow-[var(--admin-shadow-sm)]">
           <CardHeader title="Günlük satış" description="Seçili dönem trendi" />
           <SimpleLineChart
             items={salesChartItems}
@@ -175,8 +177,8 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-2">
-        <Card padding="sm">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card padding="sm" className="border-[rgb(var(--admin-border))] shadow-[var(--admin-shadow-sm)]">
           <CardHeader
             title="En çok satan ürünler"
             description="Sipariş kalemlerine göre"

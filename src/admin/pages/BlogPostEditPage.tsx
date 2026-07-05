@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { BlogPostDto, PageStatus } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import {
   BLOG_STATUS_LABELS,
   createBlogPost,
@@ -13,6 +12,7 @@ import {
   unpublishBlogPost,
   updateBlogPost,
 } from '@/shared/api/blog.api';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import {
   Badge,
   Button,
@@ -51,11 +51,11 @@ export function BlogPostEditPage() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
 
   const [tab, setTab] = useState<Tab>('content');
   const [form, setForm] = useState(emptyForm());
   const [slugTouched, setSlugTouched] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const postQuery = useQuery({
@@ -109,17 +109,15 @@ export function BlogPostEditPage() {
     onSuccess: (data) => {
       setForm({ ...data, tagsInput: data.tags.join(', ') });
       invalidate();
-      setMessage('Yazı kaydedildi.');
       setErrorMessage(null);
+      onSuccess('Yazı kaydedildi.');
       if (isNew) {
         navigate(`/admin/content/blog/posts/${data.id}`, { replace: true });
       }
     },
     onError: (error) => {
-      setMessage(null);
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
+      const message = onError(error, 'Kayıt başarısız');
+      setErrorMessage(message);
     },
   });
 
@@ -128,8 +126,9 @@ export function BlogPostEditPage() {
     onSuccess: (data) => {
       setForm({ ...data, tagsInput: data.tags.join(', ') });
       invalidate();
-      setMessage('Yazı yayınlandı.');
+      onSuccess('Yazı yayınlandı.');
     },
+    onError: (error) => onError(error, 'Yayınlama başarısız'),
   });
 
   const unpublishMutation = useMutation({
@@ -137,8 +136,9 @@ export function BlogPostEditPage() {
     onSuccess: (data) => {
       setForm({ ...data, tagsInput: data.tags.join(', ') });
       invalidate();
-      setMessage('Yazı taslağa alındı.');
+      onSuccess('Yazı taslağa alındı.');
     },
+    onError: (error) => onError(error, 'İşlem başarısız'),
   });
 
   const handleTitleChange = (title: string) => {
@@ -205,7 +205,6 @@ export function BlogPostEditPage() {
         </Link>
       </div>
 
-      {message ? <p className="mb-3 text-sm text-emerald-600">{message}</p> : null}
       {errorMessage ? (
         <p className="mb-3 text-sm text-red-600">{errorMessage}</p>
       ) : null}

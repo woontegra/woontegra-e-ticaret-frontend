@@ -42,7 +42,7 @@ export function ProductCarouselBlock({ block }: BlockComponentProps) {
       {productsQuery.isPending ? (
         <CatalogGridSkeleton columns={4} count={4} horizontal />
       ) : products.length === 0 ? (
-        <BlockEmptyState message="Henüz gösterilecek ürün yok." />
+        <BlockEmptyState messageKey="emptyProducts" />
       ) : (
         <div className="-mx-1 flex gap-4 overflow-x-auto pb-2">
           {products.map((product) => (

@@ -2,7 +2,7 @@ import { cn } from '@/shared/lib/cn';
 
 export function Table({ className, ...props }: React.HTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200">
+    <div className="overflow-x-auto rounded-md border border-slate-200">
       <table
         className={cn('w-full min-w-[640px] border-collapse text-left text-sm', className)}
         {...props}
@@ -34,7 +34,7 @@ export function TableHeaderCell({
 }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn('px-3 py-2 font-medium tracking-wide', className)}
+      className={cn('px-3 py-1.5 font-medium tracking-wide', className)}
       {...props}
     />
   );
@@ -45,7 +45,7 @@ export function TableCell({
   ...props
 }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn('px-3 py-2 text-slate-700', className)} {...props} />
+    <td className={cn('px-3 py-1.5 text-slate-700', className)} {...props} />
   );
 }
 

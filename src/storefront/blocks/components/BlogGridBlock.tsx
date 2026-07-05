@@ -32,7 +32,7 @@ export function BlogGridBlock({ block }: BlockComponentProps) {
       {postsQuery.isPending ? (
         <CatalogGridSkeleton columns={columns} count={Math.min(limit, 4)} />
       ) : posts.length === 0 ? (
-        <BlockEmptyState message="Henüz yayınlanmış blog yazısı yok." />
+        <BlockEmptyState messageKey="emptyBlog" />
       ) : (
         <div
           className="grid w-full gap-4"

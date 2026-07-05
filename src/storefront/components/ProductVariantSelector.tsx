@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { cn } from '@/shared/lib/cn';
+import { uiLabel, uiLabelFormat } from '@/shared/lib/storefront-ui';
 import type {
   PublicProductVariantDto,
   PublicVariantAttributeDto,
 } from '@/shared/types/api';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 
 interface ProductVariantSelectorProps {
   variantAttributes: PublicVariantAttributeDto[];
@@ -29,6 +31,10 @@ export function ProductVariantSelector({
   variants,
   onVariantChange,
 }: ProductVariantSelectorProps) {
+  const ui = useStorefrontUi();
+  const productVariantOutOfStock = uiLabel(ui, 'productVariantOutOfStock');
+  const productVariantUnavailable = uiLabel(ui, 'productVariantUnavailable');
+
   const initialSelection = useMemo(() => {
     const first = variants[0];
     if (!first) return {};
@@ -58,6 +64,17 @@ export function ProductVariantSelector({
   if (variantAttributes.length === 0 || variants.length === 0) {
     return null;
   }
+
+  const stockMessage = activeVariant
+    ? activeVariant.stockQuantity !== null &&
+      activeVariant.stockQuantity <= 0
+      ? productVariantOutOfStock
+      : activeVariant.stockQuantity !== null
+        ? uiLabelFormat(ui, 'productVariantStock', {
+            qty: activeVariant.stockQuantity,
+          })
+        : null
+    : productVariantUnavailable;
 
   return (
     <div className="mt-6 space-y-4">
@@ -102,20 +119,16 @@ export function ProductVariantSelector({
         </div>
       ))}
 
-      {activeVariant ? (
-        <p className="text-xs text-theme-muted">
-          {activeVariant.stockQuantity !== null &&
-          activeVariant.stockQuantity <= 0
-            ? 'Seçilen varyant stokta yok.'
-            : activeVariant.stockQuantity !== null
-              ? `Stok: ${activeVariant.stockQuantity}`
-              : null}
+      {stockMessage ? (
+        <p
+          className={cn(
+            'text-xs',
+            activeVariant ? 'text-theme-muted' : 'text-red-600',
+          )}
+        >
+          {stockMessage}
         </p>
-      ) : (
-        <p className="text-xs text-red-600">
-          Bu kombinasyon mevcut değil.
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }

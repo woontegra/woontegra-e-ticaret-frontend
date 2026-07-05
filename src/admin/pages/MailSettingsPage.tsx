@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MailSettingDto } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import {
   getMailSettings,
   listMailLogs,
@@ -12,6 +11,7 @@ import {
   updateMailSettings,
 } from '@/shared/api/mail.api';
 import { MailSettingsSubNav } from '@/admin/components/MailSettingsSubNav';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import {
   Badge,
   Button,
@@ -31,11 +31,11 @@ import {
 
 export function MailSettingsPage() {
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const [form, setForm] = useState<Partial<MailSettingDto>>({});
   const [smtpPass, setSmtpPass] = useState('');
   const [testEmail, setTestEmail] = useState('');
   const [testTemplateKey, setTestTemplateKey] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [testMessage, setTestMessage] = useState<string | null>(null);
 
@@ -75,15 +75,13 @@ export function MailSettingsPage() {
     onSuccess: (data) => {
       setForm(data);
       setSmtpPass('');
-      setMessage('Mail ayarları kaydedildi.');
       setErrorMessage(null);
+      onSuccess('Mail ayarları kaydedildi.');
       queryClient.invalidateQueries({ queryKey: ['admin', 'mail-settings'] });
     },
     onError: (error) => {
-      setMessage(null);
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
+      const message = onError(error, 'Kayıt başarısız');
+      setErrorMessage(message);
     },
   });
 
@@ -104,9 +102,7 @@ export function MailSettingsPage() {
       }
     },
     onError: (error) => {
-      setTestMessage(
-        error instanceof ApiError ? error.message : 'Test maili gönderilemedi',
-      );
+      setTestMessage(onError(error, 'Test maili gönderilemedi'));
     },
   });
 
@@ -221,9 +217,6 @@ export function MailSettingsPage() {
             <Label>Mail gönderimi aktif</Label>
           </div>
 
-          {message ? (
-            <p className="md:col-span-2 text-sm text-green-600">{message}</p>
-          ) : null}
           {errorMessage ? (
             <p className="md:col-span-2 text-sm text-red-600">{errorMessage}</p>
           ) : null}

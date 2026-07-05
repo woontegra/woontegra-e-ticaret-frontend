@@ -15,6 +15,7 @@ import {
   Select,
   Textarea,
 } from '@/shared/ui';
+import { BlockItemEditors } from '@/admin/components/builder/BlockItemEditors';
 
 interface BlockSettingsPanelProps {
   block: PageBlockDto | null;
@@ -127,8 +128,9 @@ export function BlockSettingsPanel({ block, onChange }: BlockSettingsPanelProps)
   const title = block.title ?? content.headline ?? '';
 
   const campaignsQuery = useQuery({
-    queryKey: ['admin', 'campaigns'],
-    queryFn: listCampaigns,
+    queryKey: ['admin', 'campaigns', 'options'],
+    queryFn: () => listCampaigns({ limit: 200 }),
+    select: (data) => data.items,
     enabled: block.type === 'CAMPAIGN',
   });
 
@@ -330,13 +332,54 @@ export function BlockSettingsPanel({ block, onChange }: BlockSettingsPanelProps)
               onChange={(event) =>
                 updateContent({ formKey: event.target.value })
               }
-              placeholder="Boş bırakılırsa standart iletişim formu"
+              placeholder="CONTACT_FORM"
             />
             <p className="mt-1 text-xs text-slate-500">
               Admin → İletişim → Formlar bölümündeki form anahtarını girin.
             </p>
           </div>
         ) : null}
+
+        {block.type === 'NEWSLETTER' ? (
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="block-newsletter-placeholder">E-posta placeholder</Label>
+              <Input
+                id="block-newsletter-placeholder"
+                value={content.emailPlaceholder ?? ''}
+                onChange={(event) =>
+                  updateContent({ emailPlaceholder: event.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="block-newsletter-button">Buton metni</Label>
+              <Input
+                id="block-newsletter-button"
+                value={content.buttonLabel ?? ''}
+                onChange={(event) =>
+                  updateContent({ buttonLabel: event.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="block-newsletter-success">Başarı mesajı</Label>
+              <Input
+                id="block-newsletter-success"
+                value={content.successMessage ?? ''}
+                onChange={(event) =>
+                  updateContent({ successMessage: event.target.value })
+                }
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <BlockItemEditors
+          blockType={block.type}
+          content={block.content}
+          onChange={updateContent}
+        />
       </section>
 
       <section className="space-y-3 border-t border-slate-100 pt-4">

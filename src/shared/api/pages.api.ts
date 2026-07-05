@@ -10,6 +10,8 @@ export interface PageListParams {
   search?: string;
   status?: PageStatus;
   pageType?: PageType;
+  page?: number;
+  limit?: number;
 }
 
 export interface SavePagePayload {
@@ -33,6 +35,8 @@ export function listPages(params: PageListParams = {}) {
   if (params.search) query.set('search', params.search);
   if (params.status) query.set('status', params.status);
   if (params.pageType) query.set('pageType', params.pageType);
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
 
   const suffix = query.toString() ? `?${query.toString()}` : '';
   return apiClient<PageListResult>(`/api/admin/pages${suffix}`);

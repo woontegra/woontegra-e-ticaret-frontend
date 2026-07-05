@@ -17,19 +17,19 @@ import {
   SHIPPING_STATUS_LABELS,
 } from '@/shared/api/orders.api';
 import { OrderDetailPanel } from '@/admin/components/OrderDetailPanel';
+import { AdminPanel } from '@/admin/components/AdminPanel';
+import { TableQueryState } from '@/admin/components/TableQueryState';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
   Drawer,
   Input,
   Label,
+  Pagination,
   Select,
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
@@ -86,6 +86,7 @@ export function OrdersListPage() {
 
   const total = ordersQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const items = ordersQuery.data?.items ?? [];
 
   const resetFilters = () => {
     setOrderNumber('');
@@ -100,124 +101,128 @@ export function OrdersListPage() {
 
   return (
     <>
-      <Card padding="sm">
-        <CardHeader
-          title="Siparişler"
-          description="Siparişleri filtreleyin, durumlarını güncelleyin"
-        />
-
-        <div className="mb-4 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <Label htmlFor="filter-order-number">Sipariş no</Label>
-            <Input
-              id="filter-order-number"
-              value={orderNumber}
-              onChange={(event) => {
-                setOrderNumber(event.target.value);
-                setPage(1);
-              }}
-              placeholder="W20250705-1234"
-            />
+      <AdminPanel
+        filters={
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <Label htmlFor="filter-order-number">Sipariş no</Label>
+              <Input
+                id="filter-order-number"
+                value={orderNumber}
+                onChange={(event) => {
+                  setOrderNumber(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="W20250705-1234"
+              />
+            </div>
+            <div>
+              <Label htmlFor="filter-customer">Müşteri / e-posta</Label>
+              <Input
+                id="filter-customer"
+                value={customer}
+                onChange={(event) => {
+                  setCustomer(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Ad veya e-posta"
+              />
+            </div>
+            <div>
+              <Label htmlFor="filter-status">Sipariş durumu</Label>
+              <Select
+                id="filter-status"
+                value={statusFilter}
+                onChange={(event) => {
+                  setStatusFilter(event.target.value as OrderStatus | '');
+                  setPage(1);
+                }}
+              >
+                <option value="">Tümü</option>
+                {Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="filter-payment">Ödeme durumu</Label>
+              <Select
+                id="filter-payment"
+                value={paymentFilter}
+                onChange={(event) => {
+                  setPaymentFilter(event.target.value as PaymentStatus | '');
+                  setPage(1);
+                }}
+              >
+                <option value="">Tümü</option>
+                {Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="filter-shipping">Kargo durumu</Label>
+              <Select
+                id="filter-shipping"
+                value={shippingFilter}
+                onChange={(event) => {
+                  setShippingFilter(event.target.value as ShippingStatus | '');
+                  setPage(1);
+                }}
+              >
+                <option value="">Tümü</option>
+                {Object.entries(SHIPPING_STATUS_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="filter-date-from">Başlangıç tarihi</Label>
+              <Input
+                id="filter-date-from"
+                type="date"
+                value={dateFrom}
+                onChange={(event) => {
+                  setDateFrom(event.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <div>
+              <Label htmlFor="filter-date-to">Bitiş tarihi</Label>
+              <Input
+                id="filter-date-to"
+                type="date"
+                value={dateTo}
+                onChange={(event) => {
+                  setDateTo(event.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <div className="flex items-end">
+              <Button variant="secondary" size="sm" onClick={resetFilters}>
+                Filtreleri temizle
+              </Button>
+            </div>
           </div>
-          <div>
-            <Label htmlFor="filter-customer">Müşteri / e-posta</Label>
-            <Input
-              id="filter-customer"
-              value={customer}
-              onChange={(event) => {
-                setCustomer(event.target.value);
-                setPage(1);
-              }}
-              placeholder="Ad veya e-posta"
-            />
-          </div>
-          <div>
-            <Label htmlFor="filter-status">Sipariş durumu</Label>
-            <Select
-              id="filter-status"
-              value={statusFilter}
-              onChange={(event) => {
-                setStatusFilter(event.target.value as OrderStatus | '');
-                setPage(1);
-              }}
-            >
-              <option value="">Tümü</option>
-              {Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="filter-payment">Ödeme durumu</Label>
-            <Select
-              id="filter-payment"
-              value={paymentFilter}
-              onChange={(event) => {
-                setPaymentFilter(event.target.value as PaymentStatus | '');
-                setPage(1);
-              }}
-            >
-              <option value="">Tümü</option>
-              {Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="filter-shipping">Kargo durumu</Label>
-            <Select
-              id="filter-shipping"
-              value={shippingFilter}
-              onChange={(event) => {
-                setShippingFilter(event.target.value as ShippingStatus | '');
-                setPage(1);
-              }}
-            >
-              <option value="">Tümü</option>
-              {Object.entries(SHIPPING_STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="filter-date-from">Başlangıç tarihi</Label>
-            <Input
-              id="filter-date-from"
-              type="date"
-              value={dateFrom}
-              onChange={(event) => {
-                setDateFrom(event.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-          <div>
-            <Label htmlFor="filter-date-to">Bitiş tarihi</Label>
-            <Input
-              id="filter-date-to"
-              type="date"
-              value={dateTo}
-              onChange={(event) => {
-                setDateTo(event.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-          <div className="flex items-end">
-            <Button variant="secondary" size="sm" onClick={resetFilters}>
-              Filtreleri temizle
-            </Button>
-          </div>
-        </div>
-
-        <p className="mb-3 text-sm text-slate-500">{total} sipariş</p>
-
+        }
+        footer={
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -232,12 +237,14 @@ export function OrdersListPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {ordersQuery.isLoading ? (
-              <TableEmpty colSpan={8} message="Yükleniyor…" />
-            ) : (ordersQuery.data?.items.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={8} message="Filtrelere uygun sipariş yok." />
-            ) : (
-              ordersQuery.data!.items.map((order) => (
+            <TableQueryState
+              colSpan={8}
+              isLoading={ordersQuery.isLoading}
+              isError={ordersQuery.isError}
+              isEmpty={items.length === 0}
+              emptyMessage="Filtrelere uygun sipariş yok."
+            >
+              {items.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.orderNumber}</TableCell>
                   <TableCell>
@@ -290,38 +297,11 @@ export function OrdersListPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-
-        {totalPages > 1 ? (
-          <nav
-            className="mt-4 flex items-center justify-center gap-2"
-            aria-label="Sayfalama"
-          >
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((value) => value - 1)}
-            >
-              Önceki
-            </Button>
-            <span className="text-sm text-slate-600">
-              {page} / {totalPages}
-            </span>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((value) => value + 1)}
-            >
-              Sonraki
-            </Button>
-          </nav>
-        ) : null}
-      </Card>
+      </AdminPanel>
 
       <Drawer
         isOpen={Boolean(drawerOrderId)}

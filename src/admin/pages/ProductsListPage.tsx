@@ -1,53 +1,80 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
-import type { ProductKind, ProductStatus } from '@/shared/types/api';
+import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
+import type { DeliveryMode, ProductDto, ProductStatus } from '@/shared/types/api';
 import {
   deleteProduct,
+  DELIVERY_MODE_LABELS,
+  getProductPublicPath,
   listProductCategories,
   listProducts,
-  PRODUCT_KIND_LABELS,
-  PRODUCT_STATUS_LABELS,
+  updateProduct,
 } from '@/shared/api/products.api';
-import { ProductsSubNav } from '@/admin/components/ProductsSubNav';
+import { ListPageShell } from '@/admin/components/ui';
+import { TableQueryState } from '@/admin/components/TableQueryState';
+import {
+  formatProductPrice,
+  getProductBadges,
+  getProductDeliveryStatusLabel,
+  getProductLicenseStatusLabel,
+  getProductSaleStatusLabel,
+  PRODUCT_BADGE_LABELS,
+} from '@/admin/lib/productAdminDisplay';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
+  ConfirmDialog,
   FilterBar,
-  Modal,
+  Pagination,
   Select,
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
 } from '@/shared/ui';
 
+const PAGE_SIZE = 20;
+
 export function ProductsListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const deleteModal = useDisclosure();
+  const { onSuccess, onError } = useAdminMutationFeedback();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProductStatus | ''>('');
-  const [kindFilter, setKindFilter] = useState<ProductKind | ''>('');
+  const [deliveryFilter, setDeliveryFilter] = useState<DeliveryMode | ''>('');
+  const [licenseFilter, setLicenseFilter] = useState<'all' | 'yes' | 'no'>('all');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [productToDelete, setProductToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, deliveryFilter, licenseFilter, categoryFilter]);
 
   const queryParams = useMemo(
     () => ({
       search: search || undefined,
       status: statusFilter || undefined,
-      productKind: kindFilter || undefined,
+      deliveryMode: deliveryFilter || undefined,
+      licenseRequired:
+        licenseFilter === 'all'
+          ? undefined
+          : licenseFilter === 'yes',
       categoryId: categoryFilter || undefined,
+      page,
+      limit: PAGE_SIZE,
     }),
-    [search, statusFilter, kindFilter, categoryFilter],
+    [search, statusFilter, deliveryFilter, licenseFilter, categoryFilter, page],
   );
 
   const productsQuery = useQuery({
@@ -56,8 +83,21 @@ export function ProductsListPage() {
   });
 
   const categoriesQuery = useQuery({
-    queryKey: ['admin', 'product-categories'],
-    queryFn: listProductCategories,
+    queryKey: ['admin', 'product-categories', 'options'],
+    queryFn: () => listProductCategories({ limit: 200 }),
+    select: (data) => data.items,
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ProductStatus }) =>
+      updateProduct(id, {
+        status: status === 'ACTIVE' ? 'PASSIVE' : 'ACTIVE',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
+      onSuccess('Durum güncellendi.');
+    },
+    onError: (error) => onError(error, 'Durum güncellenemedi.'),
   });
 
   const deleteMutation = useMutation({
@@ -67,164 +107,261 @@ export function ProductsListPage() {
       queryClient.invalidateQueries({ queryKey: ['public', 'products'] });
       deleteModal.close();
       setProductToDelete(null);
+      onSuccess('Ürün silindi.');
     },
+    onError: (error) => onError(error, 'Ürün silinemedi.'),
   });
+
+  const total = productsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const items = productsQuery.data?.items ?? [];
 
   return (
     <>
-      <ProductsSubNav />
-      <Card padding="sm">
-        <CardHeader
-          title="Ürünler / Yazılımlar"
-          description="Ürün ve yazılım kayıtlarını yönetin"
-          action={
-            <Button size="sm" onClick={() => navigate('/admin/products/new')}>
-              <Plus className="h-4 w-4" />
-              Yeni ekle
-            </Button>
-          }
-        />
-
-        <FilterBar
-          className="mb-4"
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Ad, slug veya SKU ara…"
-        >
-          <Select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as ProductStatus | '')
-            }
+      <ListPageShell
+        title="Ürünler / Yazılımlar"
+        description="Katalog ürünlerini, teslimat modlarını ve yayın durumlarını yönetin"
+        actions={
+          <Button size="sm" onClick={() => navigate('/admin/products/new')}>
+            <Plus className="h-4 w-4" />
+            Yeni ürün
+          </Button>
+        }
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Ad veya slug ara…"
           >
-            <option value="">Tüm durumlar</option>
-            {Object.entries(PRODUCT_STATUS_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={kindFilter}
-            onChange={(event) =>
-              setKindFilter(event.target.value as ProductKind | '')
-            }
-          >
-            <option value="">Tüm türler</option>
-            {Object.entries(PRODUCT_KIND_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value)}
-          >
-            <option value="">Tüm kategoriler</option>
-            {categoriesQuery.data?.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </Select>
-        </FilterBar>
-
+            <Select
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(e.target.value as ProductStatus | '')
+              }
+              className="h-8 text-xs"
+            >
+              <option value="">Tüm durumlar</option>
+              <option value="ACTIVE">Yayında</option>
+              <option value="DRAFT">Taslak</option>
+              <option value="PASSIVE">Pasif</option>
+            </Select>
+            <Select
+              value={deliveryFilter}
+              onChange={(e) =>
+                setDeliveryFilter(e.target.value as DeliveryMode | '')
+              }
+              className="h-8 text-xs"
+            >
+              <option value="">Tüm teslimat modları</option>
+              {Object.entries(DELIVERY_MODE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+            <Select
+              value={licenseFilter}
+              onChange={(e) =>
+                setLicenseFilter(e.target.value as 'all' | 'yes' | 'no')
+              }
+              className="h-8 text-xs"
+            >
+              <option value="all">Lisans: tümü</option>
+              <option value="yes">Lisanslı</option>
+              <option value="no">Lisanssız</option>
+            </Select>
+            <Select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="h-8 text-xs"
+            >
+              <option value="">Tüm kategoriler</option>
+              {categoriesQuery.data?.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </Select>
+          </FilterBar>
+        }
+        footer={
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
-              <TableHeaderCell>Ad</TableHeaderCell>
-              <TableHeaderCell>Tür</TableHeaderCell>
+              <TableHeaderCell>Ürün</TableHeaderCell>
               <TableHeaderCell>Kategori</TableHeaderCell>
-              <TableHeaderCell>Durum</TableHeaderCell>
+              <TableHeaderCell>Fiyat</TableHeaderCell>
+              <TableHeaderCell>Satış</TableHeaderCell>
+              <TableHeaderCell>Teslimat</TableHeaderCell>
+              <TableHeaderCell>Lisans</TableHeaderCell>
+              <TableHeaderCell>Görsel</TableHeaderCell>
+              <TableHeaderCell>Güncelleme</TableHeaderCell>
               <TableHeaderCell className="text-right">İşlem</TableHeaderCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {productsQuery.isLoading ? (
-              <TableEmpty colSpan={5} message="Yükleniyor…" />
-            ) : (productsQuery.data?.items.length ?? 0) === 0 ? (
-              <TableEmpty colSpan={5} message="Henüz ürün eklenmedi." />
-            ) : (
-              productsQuery.data!.items.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-slate-900">{product.name}</p>
-                      <p className="text-xs text-slate-400">{product.slug}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {PRODUCT_KIND_LABELS[product.productKind]}
-                  </TableCell>
-                  <TableCell>{product.category?.name ?? '—'}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        product.status === 'ACTIVE'
-                          ? 'success'
-                          : product.status === 'DRAFT'
-                            ? 'warning'
-                            : 'default'
-                      }
-                    >
-                      {PRODUCT_STATUS_LABELS[product.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          navigate(`/admin/products/${product.id}`)
-                        }
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setProductToDelete(product.id);
-                          deleteModal.open();
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+            <TableQueryState
+              colSpan={9}
+              isLoading={productsQuery.isLoading}
+              isError={productsQuery.isError}
+              isEmpty={items.length === 0}
+              emptyMessage="Henüz ürün eklenmedi."
+            >
+              {items.map((product) => (
+                <ProductRow
+                  key={product.id}
+                  product={product}
+                  onEdit={() => navigate(`/admin/products/${product.id}/edit`)}
+                  onToggleStatus={() =>
+                    toggleStatusMutation.mutate({
+                      id: product.id,
+                      status: product.status,
+                    })
+                  }
+                  onDelete={() => {
+                    setProductToDelete({
+                      id: product.id,
+                      name: product.name,
+                    });
+                    deleteModal.open();
+                  }}
+                  isToggling={toggleStatusMutation.isPending}
+                />
+              ))}
+            </TableQueryState>
           </TableBody>
         </Table>
-      </Card>
+      </ListPageShell>
 
-      <Modal
+      <ConfirmDialog
         isOpen={deleteModal.isOpen}
         onClose={deleteModal.close}
         title="Ürünü sil"
-        size="sm"
-      >
-        <p className="text-sm text-slate-600">
-          Bu ürün kalıcı olarak silinecek. Devam etmek istiyor musunuz?
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={deleteModal.close}>
-            İptal
+        description={
+          productToDelete
+            ? `"${productToDelete.name}" kalıcı olarak silinecek. Devam edilsin mi?`
+            : 'Bu ürün kalıcı olarak silinecek.'
+        }
+        confirmLabel="Sil"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() =>
+          productToDelete && deleteMutation.mutate(productToDelete.id)
+        }
+      />
+    </>
+  );
+}
+
+function ProductRow({
+  product,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  isToggling,
+}: {
+  product: ProductDto;
+  onEdit: () => void;
+  onToggleStatus: () => void;
+  onDelete: () => void;
+  isToggling: boolean;
+}) {
+  const badges = getProductBadges(product);
+  const licenseLabel = getProductLicenseStatusLabel(product);
+  const publicPath =
+    product.status === 'ACTIVE'
+      ? getProductPublicPath({
+          slug: product.slug,
+          productKind: product.productKind,
+        })
+      : null;
+
+  return (
+    <TableRow>
+      <TableCell>
+        <div className="min-w-0 space-y-1">
+          <p className="truncate font-medium text-[rgb(var(--admin-text))]">
+            {product.name}
+          </p>
+          <p className="truncate text-xs text-[rgb(var(--admin-text-muted))]">
+            {product.slug}
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {badges.map((badge) => (
+              <Badge key={badge} variant="default">
+                {PRODUCT_BADGE_LABELS[badge]}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </TableCell>
+      <TableCell>{product.category?.name ?? '—'}</TableCell>
+      <TableCell>{formatProductPrice(product)}</TableCell>
+      <TableCell className="text-sm">
+        {getProductSaleStatusLabel(product)}
+      </TableCell>
+      <TableCell className="text-sm">
+        {getProductDeliveryStatusLabel(product)}
+      </TableCell>
+      <TableCell>
+        <span
+          className={
+            product.licenseRequired
+              ? 'font-mono text-xs text-[rgb(var(--admin-primary))]'
+              : 'text-sm text-[rgb(var(--admin-text-muted))]'
+          }
+        >
+          {licenseLabel}
+        </span>
+      </TableCell>
+      <TableCell>
+        <Badge variant={product.mainImageId ? 'success' : 'default'}>
+          {product.mainImageId ? 'Var' : 'Yok'}
+        </Badge>
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-xs text-[rgb(var(--admin-text-muted))]">
+        {new Date(product.updatedAt).toLocaleDateString('tr-TR', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })}
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex justify-end gap-0.5">
+          {publicPath ? (
+            <Link
+              to={publicPath}
+              target="_blank"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[rgb(var(--admin-text-muted))] hover:bg-[rgb(var(--admin-sidebar-hover))]"
+              aria-label="Görüntüle"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Link>
+          ) : null}
+          <Button variant="ghost" size="sm" aria-label="Düzenle" onClick={onEdit}>
+            <Pencil className="h-4 w-4" />
           </Button>
           <Button
-            variant="danger"
-            disabled={!productToDelete || deleteMutation.isPending}
-            onClick={() =>
-              productToDelete && deleteMutation.mutate(productToDelete)
-            }
+            variant="ghost"
+            size="sm"
+            disabled={isToggling}
+            onClick={onToggleStatus}
           >
-            Sil
+            {product.status === 'ACTIVE' ? 'Pasif' : 'Aktif'}
+          </Button>
+          <Button variant="ghost" size="sm" aria-label="Sil" onClick={onDelete}>
+            <Trash2 className="h-4 w-4 text-red-600" />
           </Button>
         </div>
-      </Modal>
-    </>
+      </TableCell>
+    </TableRow>
   );
 }

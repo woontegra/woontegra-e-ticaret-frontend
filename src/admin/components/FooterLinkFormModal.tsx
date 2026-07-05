@@ -4,6 +4,7 @@ import type { FooterLinkDto, MenuItemType } from '@/shared/types/api';
 import { listBlogCategories, listBlogPosts } from '@/shared/api/blog.api';
 import { FOOTER_LINK_TYPE_LABELS } from '@/shared/api/footer.api';
 import { listPages } from '@/shared/api/pages.api';
+import { listProductCategories, listProducts } from '@/shared/api/products.api';
 import { Button, Input, Label, Modal, Select } from '@/shared/ui';
 
 export interface FooterLinkFormValues {
@@ -59,6 +60,19 @@ export function FooterLinkFormModal({
     queryKey: ['admin', 'blog', 'categories', 'picker'],
     queryFn: listBlogCategories,
     enabled: isOpen && form.type === 'CATEGORY',
+  });
+
+  const productCategoriesQuery = useQuery({
+    queryKey: ['admin', 'product-categories', 'picker'],
+    queryFn: () => listProductCategories({ isActive: true, limit: 200 }),
+    select: (data) => data.items,
+    enabled: isOpen && form.type === 'PRODUCT_CATEGORY',
+  });
+
+  const productsQuery = useQuery({
+    queryKey: ['admin', 'products', 'picker'],
+    queryFn: () => listProducts({ status: 'ACTIVE', limit: 200 }),
+    enabled: isOpen && form.type === 'PRODUCT',
   });
 
   useEffect(() => {
@@ -171,7 +185,7 @@ export function FooterLinkFormModal({
 
         {form.type === 'CATEGORY' ? (
           <div>
-            <Label htmlFor="footer-link-category">Kategori</Label>
+            <Label htmlFor="footer-link-category">Blog kategorisi</Label>
             <Select
               id="footer-link-category"
               value={form.targetId}
@@ -189,17 +203,43 @@ export function FooterLinkFormModal({
           </div>
         ) : null}
 
+        {form.type === 'PRODUCT_CATEGORY' ? (
+          <div>
+            <Label htmlFor="footer-link-product-category">Ürün kategorisi</Label>
+            <Select
+              id="footer-link-product-category"
+              value={form.targetId}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, targetId: event.target.value }))
+              }
+            >
+              <option value="">Seçin</option>
+              {(productCategoriesQuery.data ?? []).map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        ) : null}
+
         {form.type === 'PRODUCT' ? (
           <div>
-            <Label htmlFor="footer-link-product">Ürün ID</Label>
-            <Input
+            <Label htmlFor="footer-link-product">Ürün</Label>
+            <Select
               id="footer-link-product"
               value={form.targetId}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, targetId: event.target.value }))
               }
-              placeholder="Ürün modülü eklendiğinde seçici aktif olacak"
-            />
+            >
+              <option value="">Seçin</option>
+              {(productsQuery.data?.items ?? []).map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </Select>
           </div>
         ) : null}
 

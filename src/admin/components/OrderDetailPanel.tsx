@@ -8,6 +8,7 @@ import {
   PAYMENT_STATUS_LABELS,
   SHIPPING_STATUS_LABELS,
   orderStatusBadgeVariant,
+  retryOrderDigitalDelivery,
   updateOrderAdminNote,
   updateOrderPaymentStatus,
   updateOrderShipment,
@@ -92,25 +93,42 @@ export function OrderDetailPanel({ order, onUpdated }: OrderDetailPanelProps) {
     onSuccess: invalidate,
   });
 
+  const digitalDeliveryMutation = useMutation({
+    mutationFn: () => retryOrderDigitalDelivery(order.id),
+    onSuccess: invalidate,
+  });
+
   const isSaving =
     statusMutation.isPending ||
     paymentMutation.isPending ||
     shippingMutation.isPending ||
     noteMutation.isPending ||
-    shipmentMutation.isPending;
+    shipmentMutation.isPending ||
+    digitalDeliveryMutation.isPending;
 
   const mutationError =
     (statusMutation.error ??
       paymentMutation.error ??
       shippingMutation.error ??
       noteMutation.error ??
-      shipmentMutation.error) instanceof ApiError
+      shipmentMutation.error ??
+      digitalDeliveryMutation.error) instanceof ApiError
       ? (statusMutation.error ??
           paymentMutation.error ??
           shippingMutation.error ??
           noteMutation.error ??
-          shipmentMutation.error as ApiError).message
+          shipmentMutation.error ??
+          digitalDeliveryMutation.error as ApiError).message
       : null;
+
+  const digitalDeliveryItems = order.digitalDelivery ?? [];
+
+  const DELIVERY_STATUS_LABELS: Record<string, string> = {
+    PENDING: 'Bekliyor',
+    READY: 'Hazır',
+    SENT: 'Gönderildi',
+    FAILED: 'Başarısız',
+  };
 
   return (
     <div className="space-y-6">
@@ -237,6 +255,63 @@ export function OrderDetailPanel({ order, onUpdated }: OrderDetailPanelProps) {
           Kargo bilgisini kaydet
         </Button>
       </section>
+
+      {digitalDeliveryItems.length > 0 ? (
+        <section>
+          <h3 className="text-sm font-semibold text-slate-800">
+            Dijital teslimat
+          </h3>
+          {order.paymentStatus !== 'PAID' ? (
+            <p className="mt-2 text-sm text-amber-700">
+              Ödeme tamamlanmadan teslimat yapılmaz.
+            </p>
+          ) : null}
+          <div className="mt-3 space-y-3">
+            {digitalDeliveryItems.map((item) => (
+              <div
+                key={item.orderItemId}
+                className="rounded-lg border border-slate-200 p-3 text-sm"
+              >
+                <p className="font-medium text-slate-900">{item.productName}</p>
+                <p className="text-slate-500">Teslimat: {item.deliveryMode}</p>
+                <p className="text-slate-600">
+                  Durum:{' '}
+                  {item.deliveryStatus
+                    ? DELIVERY_STATUS_LABELS[item.deliveryStatus] ??
+                      item.deliveryStatus
+                    : '—'}
+                </p>
+                <p className="text-slate-600">
+                  Token: {item.tokenCount > 0 ? 'Oluşturuldu' : 'Yok'}
+                  {item.downloadTokenCreatedAt
+                    ? ` (${new Date(item.downloadTokenCreatedAt).toLocaleString('tr-TR')})`
+                    : ''}
+                </p>
+                <p className="text-slate-600">
+                  E-posta:{' '}
+                  {item.downloadEmailSentAt
+                    ? `Gönderildi (${new Date(item.downloadEmailSentAt).toLocaleString('tr-TR')})`
+                    : 'Henüz gönderilmedi'}
+                </p>
+                {item.deliveryError ? (
+                  <p className="mt-1 text-red-600">{item.deliveryError}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <Button
+            size="sm"
+            className="mt-3"
+            disabled={
+              digitalDeliveryMutation.isPending ||
+              order.paymentStatus !== 'PAID'
+            }
+            onClick={() => digitalDeliveryMutation.mutate()}
+          >
+            Dijital Teslimatı Yeniden Dene
+          </Button>
+        </section>
+      ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2">
         <div>

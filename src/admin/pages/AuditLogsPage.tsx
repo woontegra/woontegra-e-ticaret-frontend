@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ReportDateRangeFilter } from '@/admin/components/ReportDateRangeFilter';
+import { AdminPanel } from '@/admin/components/AdminPanel';
+import { TableQueryState } from '@/admin/components/TableQueryState';
 import {
   getAuditActions,
   getAuditModules,
@@ -14,13 +16,11 @@ import {
 } from '@/shared/auth/roles';
 import {
   Badge,
-  Card,
-  CardHeader,
+  Pagination,
   Select,
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
@@ -66,8 +66,9 @@ export function AuditLogsPage() {
   });
 
   const usersQuery = useQuery({
-    queryKey: ['users'],
-    queryFn: () => listUsers(),
+    queryKey: ['users', 'options'],
+    queryFn: () => listUsers({ limit: 200 }),
+    select: (data) => data.items,
   });
 
   const modulesQuery = useQuery({
@@ -82,15 +83,12 @@ export function AuditLogsPage() {
 
   const total = logsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const items = logsQuery.data?.items ?? [];
 
   return (
-    <div className="space-y-4">
-      <Card padding="sm">
-        <CardHeader
-          title="İşlem geçmişi"
-          description="Kritik panel işlemlerinin audit kaydı"
-        />
-        <div className="mt-3 flex flex-wrap items-end gap-3">
+    <AdminPanel
+      filters={
+        <div className="flex flex-wrap items-end gap-3">
           <ReportDateRangeFilter
             dateFrom={dateFrom}
             dateTo={dateTo}
@@ -158,88 +156,70 @@ export function AuditLogsPage() {
             </Select>
           </div>
         </div>
-      </Card>
-
-      <Card padding="sm">
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell>Tarih</TableHeaderCell>
-              <TableHeaderCell>Kullanıcı</TableHeaderCell>
-              <TableHeaderCell>Modül</TableHeaderCell>
-              <TableHeaderCell>İşlem</TableHeaderCell>
-              <TableHeaderCell>Detay</TableHeaderCell>
-              <TableHeaderCell>IP</TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {logsQuery.isLoading ? (
-              <TableEmpty colSpan={6} message="Yükleniyor…" />
-            ) : logsQuery.data?.items.length ? (
-              logsQuery.data.items.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell className="whitespace-nowrap text-xs text-slate-500">
-                    {formatDateTime(log.createdAt)}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-slate-900">
-                        {log.userName ?? 'Sistem'}
-                      </p>
-                      {log.userEmail ? (
-                        <p className="text-xs text-slate-500">{log.userEmail}</p>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge>{AUDIT_MODULE_LABELS[log.module] ?? log.module}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {AUDIT_ACTION_LABELS[log.action] ?? log.action}
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate text-xs text-slate-600">
-                    {log.entityType && log.entityId
-                      ? `${log.entityType}:${log.entityId}`
-                      : '—'}
-                  </TableCell>
-                  <TableCell className="text-xs text-slate-500">
-                    {log.ipAddress ?? '—'}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableEmpty colSpan={6} message="Kayıt bulunamadı" />
-            )}
-          </TableBody>
-        </Table>
-
-        {totalPages > 1 ? (
-          <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-            <p className="text-xs text-slate-500">Toplam {total} kayıt</p>
-            <div className="flex items-center gap-2 text-xs">
-              <button
-                type="button"
-                className="rounded border px-2 py-1 disabled:opacity-50"
-                disabled={page <= 1}
-                onClick={() => setPage((value) => value - 1)}
-              >
-                Önceki
-              </button>
-              <span>
-                {page} / {totalPages}
-              </span>
-              <button
-                type="button"
-                className="rounded border px-2 py-1 disabled:opacity-50"
-                disabled={page >= totalPages}
-                onClick={() => setPage((value) => value + 1)}
-              >
-                Sonraki
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </Card>
-    </div>
+      }
+      footer={
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
+      }
+    >
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableHeaderCell>Tarih</TableHeaderCell>
+            <TableHeaderCell>Kullanıcı</TableHeaderCell>
+            <TableHeaderCell>Modül</TableHeaderCell>
+            <TableHeaderCell>İşlem</TableHeaderCell>
+            <TableHeaderCell>Detay</TableHeaderCell>
+            <TableHeaderCell>IP</TableHeaderCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          <TableQueryState
+            colSpan={6}
+            isLoading={logsQuery.isLoading}
+            isError={logsQuery.isError}
+            isEmpty={items.length === 0}
+            emptyMessage="Kayıt bulunamadı"
+          >
+            {items.map((log) => (
+              <TableRow key={log.id}>
+                <TableCell className="whitespace-nowrap text-xs text-slate-500">
+                  {formatDateTime(log.createdAt)}
+                </TableCell>
+                <TableCell>
+                  <div>
+                    <p className="font-medium text-slate-900">
+                      {log.userName ?? 'Sistem'}
+                    </p>
+                    {log.userEmail ? (
+                      <p className="text-xs text-slate-500">{log.userEmail}</p>
+                    ) : null}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge>{AUDIT_MODULE_LABELS[log.module] ?? log.module}</Badge>
+                </TableCell>
+                <TableCell>
+                  {AUDIT_ACTION_LABELS[log.action] ?? log.action}
+                </TableCell>
+                <TableCell className="max-w-xs truncate text-xs text-slate-600">
+                  {log.entityType && log.entityId
+                    ? `${log.entityType}:${log.entityId}`
+                    : '—'}
+                </TableCell>
+                <TableCell className="text-xs text-slate-500">
+                  {log.ipAddress ?? '—'}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableQueryState>
+        </TableBody>
+      </Table>
+    </AdminPanel>
   );
 }

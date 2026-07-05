@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ApiError } from '@/shared/api/client';
 import {
   getMailTemplate,
   MAIL_TEMPLATE_KEY_LABELS,
   updateMailTemplate,
 } from '@/shared/api/mail.api';
 import { MailSettingsSubNav } from '@/admin/components/MailSettingsSubNav';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import {
   Badge,
   Button,
@@ -21,13 +21,13 @@ import {
 export function MailTemplateEditPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
   const [htmlContent, setHtmlContent] = useState('');
   const [textContent, setTextContent] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   const templateQuery = useQuery({
     queryKey: ['admin', 'mail-templates', id],
@@ -58,13 +58,11 @@ export function MailTemplateEditPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'mail-templates'] });
       setErrorMessage(null);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      onSuccess('Şablon kaydedildi.');
     },
     onError: (error) => {
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
+      const message = onError(error, 'Kayıt başarısız');
+      setErrorMessage(message);
     },
   });
 
@@ -169,9 +167,6 @@ export function MailTemplateEditPage() {
 
         {errorMessage ? (
           <p className="mt-3 text-sm text-red-600">{errorMessage}</p>
-        ) : null}
-        {saved ? (
-          <p className="mt-3 text-sm text-green-600">Kaydedildi.</p>
         ) : null}
 
         <div className="mt-4 flex justify-end gap-2">

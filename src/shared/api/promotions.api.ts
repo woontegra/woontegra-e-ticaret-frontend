@@ -3,11 +3,28 @@ import type {
   CampaignPublicDto,
   CouponDto,
   CouponType,
+  PublicCatalogListResult,
 } from '@/shared/types/api';
 import { apiClient } from './client';
 
-export function listCoupons() {
-  return apiClient<CouponDto[]>('/api/admin/coupons');
+export interface CouponListParams {
+  search?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export function listCoupons(params: CouponListParams = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.isActive !== undefined) {
+    query.set('isActive', String(params.isActive));
+  }
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return apiClient<PublicCatalogListResult<CouponDto>>(`/api/admin/coupons${suffix}`);
 }
 
 export function createCoupon(input: {
@@ -57,8 +74,26 @@ export function deleteCoupon(id: string) {
   });
 }
 
-export function listCampaigns() {
-  return apiClient<CampaignDto[]>('/api/admin/campaigns');
+export interface CampaignListParams {
+  search?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export function listCampaigns(params: CampaignListParams = {}) {
+  const query = new URLSearchParams();
+  if (params.search) query.set('search', params.search);
+  if (params.isActive !== undefined) {
+    query.set('isActive', String(params.isActive));
+  }
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return apiClient<PublicCatalogListResult<CampaignDto>>(
+    `/api/admin/campaigns${suffix}`,
+  );
 }
 
 export function createCampaign(input: {
@@ -104,6 +139,16 @@ export function deleteCampaign(id: string) {
   return apiClient<{ ok: true }>(`/api/admin/campaigns/${id}`, {
     method: 'DELETE',
   });
+}
+
+export async function findCampaignById(id: string) {
+  const result = await listCampaigns({ limit: 500 });
+  return result.items.find((item) => item.id === id) ?? null;
+}
+
+export async function findCouponById(id: string) {
+  const result = await listCoupons({ limit: 500 });
+  return result.items.find((item) => item.id === id) ?? null;
 }
 
 export function listPublicCampaigns() {

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PageDto, PageStatus, PageType } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import {
   createPage,
   getPage,
@@ -13,11 +12,12 @@ import {
   unpublishPage,
   updatePage,
 } from '@/shared/api/pages.api';
+import { AdminPageHeader } from '@/admin/components/ui';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import {
   Badge,
   Button,
   Card,
-  CardHeader,
   Input,
   Label,
   MediaField,
@@ -48,11 +48,11 @@ export function PageEditPage() {
   const isNew = id === 'new';
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
 
   const [tab, setTab] = useState<Tab>('content');
   const [form, setForm] = useState<Partial<PageDto>>(emptyForm());
   const [slugTouched, setSlugTouched] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const pageQuery = useQuery({
@@ -99,17 +99,15 @@ export function PageEditPage() {
     onSuccess: (data) => {
       setForm(data);
       invalidate();
-      setMessage('Sayfa kaydedildi.');
       setErrorMessage(null);
+      onSuccess('Sayfa kaydedildi.');
       if (isNew) {
         navigate(`/admin/content/pages/${data.id}`, { replace: true });
       }
     },
     onError: (error) => {
-      setMessage(null);
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
+      const message = onError(error, 'Kayıt başarısız');
+      setErrorMessage(message);
     },
   });
 
@@ -118,8 +116,9 @@ export function PageEditPage() {
     onSuccess: (data) => {
       setForm(data);
       invalidate();
-      setMessage('Sayfa yayınlandı.');
+      onSuccess('Sayfa yayınlandı.');
     },
+    onError: (error) => onError(error, 'Yayınlama başarısız'),
   });
 
   const unpublishMutation = useMutation({
@@ -127,8 +126,9 @@ export function PageEditPage() {
     onSuccess: (data) => {
       setForm(data);
       invalidate();
-      setMessage('Sayfa taslağa alındı.');
+      onSuccess('Sayfa taslağa alındı.');
     },
+    onError: (error) => onError(error, 'İşlem başarısız'),
   });
 
   const handleTitleChange = (title: string) => {
@@ -144,13 +144,15 @@ export function PageEditPage() {
   }
 
   return (
-    <Card padding="sm">
-      <CardHeader
-        title={isNew ? 'Yeni sayfa' : 'Sayfa düzenle'}
+    <div className="admin-page space-y-4">
+      <AdminPageHeader
+        title={isNew ? 'Yeni Sayfa' : 'Sayfa Düzenle'}
         description={
           form.slug ? `/sayfa/${form.slug}` : 'Slug kayıttan sonra oluşur'
         }
-        action={
+        backTo="/admin/content/pages"
+        backLabel="Sayfalar"
+        actions={
           <div className="flex flex-wrap gap-2">
             {!isNew && form.status === 'DRAFT' ? (
               <Button
@@ -182,6 +184,7 @@ export function PageEditPage() {
           </div>
         }
       />
+    <Card padding="sm" className="border-[rgb(var(--admin-border))] shadow-[var(--admin-shadow-sm)]">
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {form.status ? (
@@ -200,7 +203,6 @@ export function PageEditPage() {
         </Link>
       </div>
 
-      {message ? <p className="mb-3 text-sm text-emerald-600">{message}</p> : null}
       {errorMessage ? (
         <p className="mb-3 text-sm text-red-600">{errorMessage}</p>
       ) : null}
@@ -378,6 +380,7 @@ export function PageEditPage() {
         </div>
       )}
     </Card>
+    </div>
   );
 }
 

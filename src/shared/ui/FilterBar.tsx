@@ -20,7 +20,7 @@ export function FilterBar({
   return (
     <div
       className={cn(
-        'flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-2 sm:flex-row sm:items-center sm:justify-between',
+        'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between',
         className,
       )}
     >

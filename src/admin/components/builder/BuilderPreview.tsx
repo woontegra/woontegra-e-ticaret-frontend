@@ -1,14 +1,28 @@
 import { ThemeProvider } from '@/storefront/theme/ThemeProvider';
 import { HomeLayoutRenderer } from '@/storefront/blocks/HomeLayoutRenderer';
+import { HomeLayoutSkeleton } from '@/storefront/blocks/HomeLayoutSkeleton';
 import { toPublicBlockDto } from '@/shared/lib/block-model';
 import type { PageBlockDto } from '@/shared/types/api';
 
 interface BuilderPreviewProps {
   blocks: PageBlockDto[];
   selectedBlockId: string | null;
+  ready?: boolean;
 }
 
-export function BuilderPreview({ blocks, selectedBlockId }: BuilderPreviewProps) {
+export function BuilderPreview({
+  blocks,
+  selectedBlockId,
+  ready = true,
+}: BuilderPreviewProps) {
+  if (!ready) {
+    return (
+      <div className="min-h-full bg-[var(--theme-bg,#f8fafc)] p-4">
+        <HomeLayoutSkeleton />
+      </div>
+    );
+  }
+
   const previewBlocks = blocks
     .filter((block) => block.isActive)
     .map(toPublicBlockDto);

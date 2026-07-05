@@ -1,5 +1,4 @@
 import type { LucideIcon } from 'lucide-react';
-import { Card } from '@/shared/ui';
 
 interface MetricCardProps {
   label: string;
@@ -10,23 +9,27 @@ interface MetricCardProps {
 
 export function MetricCard({ label, value, hint, icon: Icon }: MetricCardProps) {
   return (
-    <Card padding="sm">
-      <div className="flex items-start justify-between gap-2">
+    <div className="rounded-lg border border-[rgb(var(--admin-border))] bg-[rgb(var(--admin-surface))] p-4 shadow-[var(--admin-shadow-sm)]">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs text-slate-500">{label}</p>
-          <p className="mt-1 truncate text-lg font-semibold text-slate-900">
+          <p className="text-xs font-medium text-[rgb(var(--admin-text-muted))]">
+            {label}
+          </p>
+          <p className="mt-1 truncate text-xl font-semibold tracking-tight text-[rgb(var(--admin-text))]">
             {value}
           </p>
           {hint ? (
-            <p className="mt-0.5 text-[10px] text-slate-400">{hint}</p>
+            <p className="mt-0.5 text-[11px] text-[rgb(var(--admin-text-muted))]">
+              {hint}
+            </p>
           ) : null}
         </div>
         {Icon ? (
-          <div className="rounded-md bg-slate-100 p-2 text-slate-600">
+          <div className="rounded-lg bg-[rgb(var(--admin-primary))]/10 p-2.5 text-[rgb(var(--admin-primary))]">
             <Icon className="h-4 w-4" />
           </div>
         ) : null}
       </div>
-    </Card>
+    </div>
   );
 }

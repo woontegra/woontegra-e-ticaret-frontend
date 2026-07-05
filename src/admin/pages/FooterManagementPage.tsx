@@ -14,7 +14,6 @@ import type {
   FooterSettingDto,
   SocialLinks,
 } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import {
   createFooterColumn,
   createFooterLink,
@@ -30,6 +29,7 @@ import {
   FooterLinkFormModal,
   type FooterLinkFormValues,
 } from '@/admin/components/FooterLinkFormModal';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Badge,
@@ -55,8 +55,8 @@ const socialFields: Array<{ key: keyof SocialLinks; label: string }> = [
 
 export function FooterManagementPage() {
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const [settingsForm, setSettingsForm] = useState<Partial<FooterSettingDto>>({});
-  const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [columnTitle, setColumnTitle] = useState('');
@@ -98,15 +98,13 @@ export function FooterManagementPage() {
     mutationFn: updateFooterSettings,
     onSuccess: (data) => {
       setSettingsForm(data);
-      setMessage('Footer ayarları kaydedildi.');
       setErrorMessage(null);
+      onSuccess('Footer ayarları kaydedildi.');
       invalidate();
     },
     onError: (error) => {
-      setMessage(null);
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
+      const message = onError(error, 'Kayıt başarısız');
+      setErrorMessage(message);
     },
   });
 
@@ -226,6 +224,11 @@ export function FooterManagementPage() {
       email: settingsForm.email ?? null,
       address: settingsForm.address ?? null,
       showNewsletter: settingsForm.showNewsletter ?? false,
+      newsletterTitle: settingsForm.newsletterTitle ?? null,
+      newsletterDescription: settingsForm.newsletterDescription ?? null,
+      newsletterPlaceholder: settingsForm.newsletterPlaceholder ?? null,
+      newsletterButtonLabel: settingsForm.newsletterButtonLabel ?? null,
+      newsletterSuccessMessage: settingsForm.newsletterSuccessMessage ?? null,
       copyrightText: settingsForm.copyrightText ?? null,
       socialLinks: settingsForm.socialLinks,
       paymentIconIds: settingsForm.paymentIconIds ?? [],
@@ -395,6 +398,77 @@ export function FooterManagementPage() {
                 Bülten formunu göster
               </label>
             </div>
+
+            {settingsForm.showNewsletter ? (
+              <>
+                <div className="md:col-span-2">
+                  <Label htmlFor="newsletter-title">Bülten başlığı</Label>
+                  <Input
+                    id="newsletter-title"
+                    value={settingsForm.newsletterTitle ?? ''}
+                    onChange={(event) =>
+                      setSettingsForm((prev) => ({
+                        ...prev,
+                        newsletterTitle: event.target.value || null,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="newsletter-description">Bülten açıklaması</Label>
+                  <Textarea
+                    id="newsletter-description"
+                    rows={2}
+                    value={settingsForm.newsletterDescription ?? ''}
+                    onChange={(event) =>
+                      setSettingsForm((prev) => ({
+                        ...prev,
+                        newsletterDescription: event.target.value || null,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="newsletter-placeholder">E-posta placeholder</Label>
+                  <Input
+                    id="newsletter-placeholder"
+                    value={settingsForm.newsletterPlaceholder ?? ''}
+                    onChange={(event) =>
+                      setSettingsForm((prev) => ({
+                        ...prev,
+                        newsletterPlaceholder: event.target.value || null,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="newsletter-button">Buton metni</Label>
+                  <Input
+                    id="newsletter-button"
+                    value={settingsForm.newsletterButtonLabel ?? ''}
+                    onChange={(event) =>
+                      setSettingsForm((prev) => ({
+                        ...prev,
+                        newsletterButtonLabel: event.target.value || null,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="newsletter-success">Başarı mesajı</Label>
+                  <Input
+                    id="newsletter-success"
+                    value={settingsForm.newsletterSuccessMessage ?? ''}
+                    onChange={(event) =>
+                      setSettingsForm((prev) => ({
+                        ...prev,
+                        newsletterSuccessMessage: event.target.value || null,
+                      }))
+                    }
+                  />
+                </div>
+              </>
+            ) : null}
           </div>
         </Card>
 
@@ -443,7 +517,6 @@ export function FooterManagementPage() {
           <Button type="submit" isLoading={saveSettingsMutation.isPending}>
             Footer ayarlarını kaydet
           </Button>
-          {message ? <p className="text-sm text-green-600">{message}</p> : null}
           {errorMessage ? (
             <p className="text-sm text-red-600">{errorMessage}</p>
           ) : null}

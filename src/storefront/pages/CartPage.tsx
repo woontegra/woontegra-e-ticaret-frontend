@@ -13,6 +13,8 @@ import {
   resolveSeoTitle,
 } from '@/shared/lib/seo-meta';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
+import { uiLabel } from '@/shared/lib/storefront-ui';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 
 export function CartPage() {
   const location = useLocation();
@@ -20,6 +22,16 @@ export function CartPage() {
   const { seoSettings } = usePageSeo();
   const cmsQuery = useOptionalPublicPage('sepet');
   const cmsPage = cmsQuery.data;
+  const ui = useStorefrontUi();
+  const cartEmpty = uiLabel(ui, 'cartEmpty');
+  const cartBackLink = uiLabel(ui, 'cartBackLink');
+  const cartCheckoutButton = uiLabel(ui, 'cartCheckoutButton');
+  const cartQuantityLabel = uiLabel(ui, 'cartQuantityLabel');
+  const cartRemoveLabel = uiLabel(ui, 'cartRemoveLabel');
+  const cartSummaryTitle = uiLabel(ui, 'cartSummaryTitle');
+  const cartSubtotal = uiLabel(ui, 'cartSubtotal');
+  const cartTax = uiLabel(ui, 'cartTax');
+  const cartTotal = uiLabel(ui, 'cartTotal');
   const { cart, isLoading, updateMutation, removeMutation } = useCart();
 
   return (
@@ -65,12 +77,18 @@ export function CartPage() {
             ))}
           </div>
         ) : !cart || cart.items.length === 0 ? (
-          <div className="mt-10 text-center">
-            <p className="text-sm text-theme-muted">Sepetiniz boş.</p>
-            <Link to="/" className="theme-link mt-4 inline-block text-sm">
-              ← Ana sayfa
-            </Link>
-          </div>
+          cartEmpty || cartBackLink ? (
+            <div className="mt-10 text-center">
+              {cartEmpty ? (
+                <p className="text-sm text-theme-muted">{cartEmpty}</p>
+              ) : null}
+              {cartBackLink ? (
+                <Link to="/" className="theme-link mt-4 inline-block text-sm">
+                  {cartBackLink}
+                </Link>
+              ) : null}
+            </div>
+          ) : null
         ) : (
           <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_280px]">
             <div className="space-y-4">
@@ -102,32 +120,36 @@ export function CartPage() {
                       {formatMoney(item.unitPrice)}
                     </p>
                     <div className="mt-3 flex items-center gap-3">
-                      <label className="text-sm text-slate-600">
-                        Adet
-                        <input
-                          type="number"
-                          min={1}
-                          max={99}
-                          value={item.quantity}
-                          disabled={updateMutation.isPending}
-                          onChange={(event) => {
-                            const quantity = Number(event.target.value);
-                            if (quantity > 0) {
-                              updateMutation.mutate({ id: item.id, quantity });
-                            }
-                          }}
-                          className="ml-2 w-16 rounded-md border border-slate-200 px-2 py-1 text-sm"
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="text-red-600"
-                        disabled={removeMutation.isPending}
-                        onClick={() => removeMutation.mutate(item.id)}
-                        aria-label="Kaldır"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {cartQuantityLabel ? (
+                        <label className="text-sm text-slate-600">
+                          {cartQuantityLabel}
+                          <input
+                            type="number"
+                            min={1}
+                            max={99}
+                            value={item.quantity}
+                            disabled={updateMutation.isPending}
+                            onChange={(event) => {
+                              const quantity = Number(event.target.value);
+                              if (quantity > 0) {
+                                updateMutation.mutate({ id: item.id, quantity });
+                              }
+                            }}
+                            className="ml-2 w-16 rounded-md border border-slate-200 px-2 py-1 text-sm"
+                          />
+                        </label>
+                      ) : null}
+                      {cartRemoveLabel ? (
+                        <button
+                          type="button"
+                          className="text-red-600"
+                          disabled={removeMutation.isPending}
+                          onClick={() => removeMutation.mutate(item.id)}
+                          aria-label={cartRemoveLabel}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                   <p className="text-sm font-medium">
@@ -138,27 +160,39 @@ export function CartPage() {
             </div>
 
             <aside className="h-fit rounded-lg border border-slate-200 bg-white p-4">
-              <h2 className="text-sm font-semibold text-slate-800">Özet</h2>
+              {cartSummaryTitle ? (
+                <h2 className="text-sm font-semibold text-slate-800">
+                  {cartSummaryTitle}
+                </h2>
+              ) : null}
               <dl className="mt-4 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-slate-600">Ara toplam</dt>
-                  <dd>{formatMoney(cart.subtotal)}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-600">KDV</dt>
-                  <dd>{formatMoney(cart.taxTotal)}</dd>
-                </div>
-                <div className="flex justify-between border-t border-slate-100 pt-2 font-semibold">
-                  <dt>Toplam</dt>
-                  <dd>{formatMoney(cart.grandTotal)}</dd>
-                </div>
+                {cartSubtotal ? (
+                  <div className="flex justify-between">
+                    <dt className="text-slate-600">{cartSubtotal}</dt>
+                    <dd>{formatMoney(cart.subtotal)}</dd>
+                  </div>
+                ) : null}
+                {cartTax ? (
+                  <div className="flex justify-between">
+                    <dt className="text-slate-600">{cartTax}</dt>
+                    <dd>{formatMoney(cart.taxTotal)}</dd>
+                  </div>
+                ) : null}
+                {cartTotal ? (
+                  <div className="flex justify-between border-t border-slate-100 pt-2 font-semibold">
+                    <dt>{cartTotal}</dt>
+                    <dd>{formatMoney(cart.grandTotal)}</dd>
+                  </div>
+                ) : null}
               </dl>
-              <Link
-                to="/odeme"
-                className="theme-btn-primary mt-4 block rounded-md py-2 text-center text-sm"
-              >
-                Ödemeye geç
-              </Link>
+              {cartCheckoutButton ? (
+                <Link
+                  to="/odeme"
+                  className="theme-btn-primary mt-4 block rounded-md py-2 text-center text-sm"
+                >
+                  {cartCheckoutButton}
+                </Link>
+              ) : null}
             </aside>
           </div>
         )}

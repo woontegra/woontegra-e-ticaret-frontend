@@ -1,11 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SeoSettingDto } from '@/shared/types/api';
-import { ApiError } from '@/shared/api/client';
 import {
   getAdminSeoSettings,
   updateAdminSeoSettings,
 } from '@/shared/api/seo.api';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import {
   Button,
   Card,
@@ -18,8 +18,8 @@ import {
 
 export function SeoSettingsPage() {
   const queryClient = useQueryClient();
+  const { onSuccess, onError } = useAdminMutationFeedback();
   const [form, setForm] = useState<Partial<SeoSettingDto>>({});
-  const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const settingsQuery = useQuery({
@@ -37,16 +37,14 @@ export function SeoSettingsPage() {
     mutationFn: updateAdminSeoSettings,
     onSuccess: (data) => {
       setForm(data);
-      setMessage('SEO ayarları kaydedildi.');
       setErrorMessage(null);
+      onSuccess('SEO ayarları kaydedildi.');
       queryClient.invalidateQueries({ queryKey: ['admin', 'seo-settings'] });
       queryClient.invalidateQueries({ queryKey: ['public', 'seo-settings'] });
     },
     onError: (error) => {
-      setMessage(null);
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
+      const message = onError(error, 'Kayıt başarısız');
+      setErrorMessage(message);
     },
   });
 
@@ -218,7 +216,6 @@ export function SeoSettingsPage() {
         </div>
       </Card>
 
-      {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
       {errorMessage ? (
         <p className="text-sm text-red-600">{errorMessage}</p>
       ) : null}

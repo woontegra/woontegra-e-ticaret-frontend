@@ -1,48 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
-import type { ProductAttributeDto, ProductAttributeType } from '@/shared/types/api';
+import type { ProductAttributeDto } from '@/shared/types/api';
 import { ApiError } from '@/shared/api/client';
 import {
-  createProductAttribute,
   createProductAttributeValue,
   deleteProductAttribute,
   deleteProductAttributeValue,
   listProductAttributes,
   PRODUCT_ATTRIBUTE_TYPE_LABELS,
-  updateProductAttribute,
   updateProductAttributeValue,
 } from '@/shared/api/products.api';
-import { ProductsSubNav } from '@/admin/components/ProductsSubNav';
+import { ListPageShell } from '@/admin/components/ui';
+import { TableQueryState } from '@/admin/components/TableQueryState';
+import { useAdminMutationFeedback } from '@/admin/hooks/useAdminMutationFeedback';
 import { useDisclosure } from '@/shared/hooks/useDisclosure';
 import {
   Badge,
   Button,
-  Card,
-  CardHeader,
+  ConfirmDialog,
+  FilterBar,
   Input,
   Label,
   Modal,
-  Select,
   Table,
   TableBody,
   TableCell,
-  TableEmpty,
   TableHead,
   TableHeaderCell,
   TableRow,
 } from '@/shared/ui';
-
-function emptyAttributeForm() {
-  return {
-    name: '',
-    code: '',
-    type: 'TEXT' as ProductAttributeType,
-    isFilterable: false,
-    isVariantOption: false,
-    sortOrder: 0,
-  };
-}
 
 function emptyValueForm() {
   return {
@@ -53,16 +41,15 @@ function emptyValueForm() {
 }
 
 export function ProductAttributesPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const attributeModal = useDisclosure();
+  const { onSuccess, onError } = useAdminMutationFeedback();
+  const [search, setSearch] = useState('');
   const valueModal = useDisclosure();
   const deleteAttributeModal = useDisclosure();
   const deleteValueModal = useDisclosure();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [selectedAttribute, setSelectedAttribute] =
-    useState<ProductAttributeDto | null>(null);
-  const [attributeForm, setAttributeForm] = useState(emptyAttributeForm());
   const [valueForm, setValueForm] = useState(emptyValueForm());
   const [valueAttributeId, setValueAttributeId] = useState<string | null>(null);
   const [selectedValueId, setSelectedValueId] = useState<string | null>(null);
@@ -80,34 +67,8 @@ export function ProductAttributesPage() {
     queryFn: listProductAttributes,
   });
 
-  useEffect(() => {
-    if (selectedAttribute) {
-      setAttributeForm({
-        name: selectedAttribute.name,
-        code: selectedAttribute.code,
-        type: selectedAttribute.type,
-        isFilterable: selectedAttribute.isFilterable,
-        isVariantOption: selectedAttribute.isVariantOption,
-        sortOrder: selectedAttribute.sortOrder,
-      });
-    }
-  }, [selectedAttribute]);
-
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ['admin', 'product-attributes'] });
-
-  const openCreateAttribute = () => {
-    setSelectedAttribute(null);
-    setAttributeForm(emptyAttributeForm());
-    setErrorMessage(null);
-    attributeModal.open();
-  };
-
-  const openEditAttribute = (attribute: ProductAttributeDto) => {
-    setSelectedAttribute(attribute);
-    setErrorMessage(null);
-    attributeModal.open();
-  };
 
   const openCreateValue = (attributeId: string) => {
     setValueAttributeId(attributeId);
@@ -131,34 +92,6 @@ export function ProductAttributesPage() {
     setErrorMessage(null);
     valueModal.open();
   };
-
-  const saveAttributeMutation = useMutation({
-    mutationFn: () => {
-      const payload = {
-        name: attributeForm.name,
-        ...(attributeForm.code ? { code: attributeForm.code } : {}),
-        type: attributeForm.type,
-        isFilterable: attributeForm.isFilterable,
-        isVariantOption: attributeForm.isVariantOption,
-        sortOrder: attributeForm.sortOrder,
-      };
-
-      return selectedAttribute
-        ? updateProductAttribute(selectedAttribute.id, payload)
-        : createProductAttribute(payload);
-    },
-    onSuccess: () => {
-      invalidate();
-      attributeModal.close();
-      setSelectedAttribute(null);
-      setErrorMessage(null);
-    },
-    onError: (error) => {
-      setErrorMessage(
-        error instanceof ApiError ? error.message : 'Kayıt başarısız',
-      );
-    },
-  });
 
   const saveValueMutation = useMutation({
     mutationFn: () => {
@@ -192,7 +125,9 @@ export function ProductAttributesPage() {
       invalidate();
       deleteAttributeModal.close();
       setToDeleteAttribute(null);
+      onSuccess('Özellik silindi.');
     },
+    onError: (error) => onError(error, 'Özellik silinemedi.'),
   });
 
   const deleteValueMutation = useMutation({
@@ -202,26 +137,44 @@ export function ProductAttributesPage() {
       invalidate();
       deleteValueModal.close();
       setToDeleteValue(null);
+      onSuccess('Değer silindi.');
     },
+    onError: (error) => onError(error, 'Değer silinemedi.'),
   });
 
-  const attributes = attributesQuery.data ?? [];
+  const attributes = useMemo(() => {
+    const items = attributesQuery.data ?? [];
+    if (!search.trim()) return items;
+    const q = search.trim().toLowerCase();
+    return items.filter(
+      (attribute) =>
+        attribute.name.toLowerCase().includes(q) ||
+        attribute.code.toLowerCase().includes(q),
+    );
+  }, [attributesQuery.data, search]);
 
   return (
     <>
-      <ProductsSubNav />
-      <Card padding="sm">
-        <CardHeader
-          title="Özellikler"
-          description="Ürün özellikleri ve varyant seçeneklerini yönetin"
-          action={
-            <Button size="sm" onClick={openCreateAttribute}>
-              <Plus className="h-4 w-4" />
-              Yeni özellik
-            </Button>
-          }
-        />
-
+      <ListPageShell
+        title="Özellikler"
+        description="Ürün özellik tanımlarını ve varyant seçeneklerini yönetin"
+        actions={
+          <Button
+            size="sm"
+            onClick={() => navigate('/admin/products/attributes/new')}
+          >
+            <Plus className="h-4 w-4" />
+            Yeni özellik
+          </Button>
+        }
+        filters={
+          <FilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Ad veya kod ara…"
+          />
+        }
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -234,12 +187,14 @@ export function ProductAttributesPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {attributesQuery.isLoading ? (
-              <TableEmpty colSpan={6} message="Yükleniyor…" />
-            ) : attributes.length === 0 ? (
-              <TableEmpty colSpan={6} message="Henüz özellik tanımlanmadı." />
-            ) : (
-              attributes.flatMap((attribute) => {
+            <TableQueryState
+              colSpan={6}
+              isLoading={attributesQuery.isLoading}
+              isError={attributesQuery.isError}
+              isEmpty={attributes.length === 0}
+              emptyMessage="Henüz özellik tanımlanmadı."
+            >
+              {attributes.flatMap((attribute) => {
                 const isExpanded = expandedId === attribute.id;
                 const rows = [
                   <TableRow key={attribute.id}>
@@ -279,7 +234,9 @@ export function ProductAttributesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => openEditAttribute(attribute)}
+                          onClick={() =>
+                            navigate(`/admin/products/attributes/${attribute.id}`)
+                          }
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -379,119 +336,11 @@ export function ProductAttributesPage() {
                 }
 
                 return rows;
-              })
-            )}
+              })}
+            </TableQueryState>
           </TableBody>
         </Table>
-      </Card>
-
-      <Modal
-        isOpen={attributeModal.isOpen}
-        onClose={attributeModal.close}
-        title={selectedAttribute ? 'Özellik düzenle' : 'Yeni özellik'}
-        size="lg"
-      >
-        <div className="grid gap-3 md:grid-cols-2">
-          <div>
-            <Label>Ad</Label>
-            <Input
-              value={attributeForm.name}
-              onChange={(event) =>
-                setAttributeForm((prev) => ({
-                  ...prev,
-                  name: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div>
-            <Label>Kod</Label>
-            <Input
-              value={attributeForm.code}
-              onChange={(event) =>
-                setAttributeForm((prev) => ({
-                  ...prev,
-                  code: event.target.value,
-                }))
-              }
-              placeholder="Otomatik üretilir"
-            />
-          </div>
-          <div>
-            <Label>Tür</Label>
-            <Select
-              value={attributeForm.type}
-              onChange={(event) =>
-                setAttributeForm((prev) => ({
-                  ...prev,
-                  type: event.target.value as ProductAttributeType,
-                }))
-              }
-            >
-              {Object.entries(PRODUCT_ATTRIBUTE_TYPE_LABELS).map(
-                ([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ),
-              )}
-            </Select>
-          </div>
-          <div>
-            <Label>Sıra</Label>
-            <Input
-              type="number"
-              value={attributeForm.sortOrder}
-              onChange={(event) =>
-                setAttributeForm((prev) => ({
-                  ...prev,
-                  sortOrder: Number(event.target.value) || 0,
-                }))
-              }
-            />
-          </div>
-          <label className="flex items-center gap-2 text-sm md:col-span-2">
-            <input
-              type="checkbox"
-              checked={attributeForm.isFilterable}
-              onChange={(event) =>
-                setAttributeForm((prev) => ({
-                  ...prev,
-                  isFilterable: event.target.checked,
-                }))
-              }
-            />
-            Filtrelenebilir
-          </label>
-          <label className="flex items-center gap-2 text-sm md:col-span-2">
-            <input
-              type="checkbox"
-              checked={attributeForm.isVariantOption}
-              onChange={(event) =>
-                setAttributeForm((prev) => ({
-                  ...prev,
-                  isVariantOption: event.target.checked,
-                }))
-              }
-            />
-            Varyant seçeneği (renk, beden vb.)
-          </label>
-        </div>
-        {errorMessage ? (
-          <p className="mt-3 text-sm text-red-600">{errorMessage}</p>
-        ) : null}
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={attributeModal.close}>
-            İptal
-          </Button>
-          <Button
-            disabled={saveAttributeMutation.isPending}
-            onClick={() => saveAttributeMutation.mutate()}
-          >
-            Kaydet
-          </Button>
-        </div>
-      </Modal>
+      </ListPageShell>
 
       <Modal
         isOpen={valueModal.isOpen}
@@ -552,51 +401,33 @@ export function ProductAttributesPage() {
         </div>
       </Modal>
 
-      <Modal
+      <ConfirmDialog
         isOpen={deleteAttributeModal.isOpen}
         onClose={deleteAttributeModal.close}
         title="Özelliği sil"
-        size="sm"
-      >
-        <p className="text-sm text-slate-600">
-          &quot;{toDeleteAttribute?.name}&quot; silinecek. Devam edilsin mi?
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={deleteAttributeModal.close}>
-            İptal
-          </Button>
-          <Button
-            variant="danger"
-            disabled={deleteAttributeMutation.isPending}
-            onClick={() => deleteAttributeMutation.mutate()}
-          >
-            Sil
-          </Button>
-        </div>
-      </Modal>
+        description={
+          toDeleteAttribute
+            ? `"${toDeleteAttribute.name}" kalıcı olarak silinecek. Devam edilsin mi?`
+            : 'Bu özellik kalıcı olarak silinecek.'
+        }
+        confirmLabel="Sil"
+        isLoading={deleteAttributeMutation.isPending}
+        onConfirm={() => deleteAttributeMutation.mutate()}
+      />
 
-      <Modal
+      <ConfirmDialog
         isOpen={deleteValueModal.isOpen}
         onClose={deleteValueModal.close}
         title="Değeri sil"
-        size="sm"
-      >
-        <p className="text-sm text-slate-600">
-          &quot;{toDeleteValue?.label}&quot; silinecek. Devam edilsin mi?
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={deleteValueModal.close}>
-            İptal
-          </Button>
-          <Button
-            variant="danger"
-            disabled={deleteValueMutation.isPending}
-            onClick={() => deleteValueMutation.mutate()}
-          >
-            Sil
-          </Button>
-        </div>
-      </Modal>
+        description={
+          toDeleteValue
+            ? `"${toDeleteValue.label}" kalıcı olarak silinecek. Devam edilsin mi?`
+            : 'Bu değer kalıcı olarak silinecek.'
+        }
+        confirmLabel="Sil"
+        isLoading={deleteValueMutation.isPending}
+        onConfirm={() => deleteValueMutation.mutate()}
+      />
     </>
   );
 }

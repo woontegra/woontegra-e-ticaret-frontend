@@ -1,8 +1,11 @@
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getPublicPage } from '@/shared/api/pages.api';
+import { uiLabel } from '@/shared/lib/storefront-ui';
 import { SeoHead } from '@/storefront/components/SeoHead';
+import { ArticleSkeleton } from '@/storefront/components/StorefrontSkeletons';
 import { usePageSeo } from '@/storefront/hooks/usePageSeo';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 import {
   buildCanonicalUrl,
   resolveOgImageUrl,
@@ -10,12 +13,14 @@ import {
   resolveSeoTitle,
 } from '@/shared/lib/seo-meta';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
+import { LazyImage } from '@/shared/ui/LazyImage';
 
 export function PublicPageView() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const siteQuery = usePublicSiteSettings();
   const { seoSettings } = usePageSeo();
+  const ui = useStorefrontUi();
 
   const pageQuery = useQuery({
     queryKey: ['public', 'pages', slug],
@@ -23,22 +28,35 @@ export function PublicPageView() {
     enabled: Boolean(slug),
   });
 
+  const notFoundTitle = uiLabel(ui, 'pageNotFoundTitle');
+  const notFoundMessage = uiLabel(ui, 'pageNotFoundMessage');
+  const homeLink = uiLabel(ui, 'pageNotFoundHomeLink');
+  const backHomeLink = uiLabel(ui, 'notFoundHomeLink');
+
   if (pageQuery.isLoading) {
-    return <p className="text-sm text-slate-500">Yükleniyor…</p>;
+    return <ArticleSkeleton />;
   }
 
   if (pageQuery.isError || !pageQuery.data) {
+    if (!notFoundTitle && !notFoundMessage && !homeLink) {
+      return null;
+    }
+
     return (
       <div className="mx-auto max-w-2xl text-center">
-        <h1 className="text-xl font-semibold text-slate-900">Sayfa bulunamadı</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Aradığınız sayfa mevcut değil veya yayından kaldırılmış olabilir.
-        </p>
-        <p className="mt-4">
-          <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">
-            ← Ana sayfaya dön
-          </Link>
-        </p>
+        {notFoundTitle ? (
+          <h1 className="text-xl font-semibold text-slate-900">{notFoundTitle}</h1>
+        ) : null}
+        {notFoundMessage ? (
+          <p className="mt-2 text-sm text-slate-600">{notFoundMessage}</p>
+        ) : null}
+        {homeLink ? (
+          <p className="mt-4">
+            <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">
+              {homeLink}
+            </Link>
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -77,7 +95,7 @@ export function PublicPageView() {
 
       <article className="mx-auto max-w-3xl">
         {page.featuredImageUrl ? (
-          <img
+          <LazyImage
             src={page.featuredImageUrl}
             alt={page.title}
             className="mb-6 w-full rounded-lg object-cover"
@@ -97,11 +115,13 @@ export function PublicPageView() {
           dangerouslySetInnerHTML={{ __html: page.contentHtml }}
         />
 
-        <p className="mt-8 text-sm">
-          <Link to="/" className="text-slate-600 hover:text-slate-900">
-            ← Ana sayfaya dön
-          </Link>
-        </p>
+        {backHomeLink ? (
+          <p className="mt-8 text-sm">
+            <Link to="/" className="text-slate-600 hover:text-slate-900">
+              {backHomeLink}
+            </Link>
+          </p>
+        ) : null}
       </article>
     </>
   );

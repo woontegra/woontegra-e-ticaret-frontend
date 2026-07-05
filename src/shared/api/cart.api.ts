@@ -64,10 +64,22 @@ export function checkout(payload: CheckoutInput) {
   });
 }
 
-export function getPublicOrder(orderNumber: string) {
-  return apiClient<PublicOrderDto>(`/api/public/orders/${orderNumber}`, {
-    auth: false,
-  });
+export function getPublicOrder(orderNumber: string, email: string) {
+  const query = new URLSearchParams({ email });
+  return apiClient<PublicOrderDto>(
+    `/api/public/orders/${encodeURIComponent(orderNumber)}?${query.toString()}`,
+    {
+      auth: false,
+    },
+  );
+}
+
+export function getPublicOrderDownloads(orderNumber: string, email: string) {
+  const query = new URLSearchParams({ email });
+  return apiClient<{ links: import('@/shared/types/api').PublicDownloadLinkDto[] }>(
+    `/api/public/orders/${encodeURIComponent(orderNumber)}/downloads?${query.toString()}`,
+    { auth: false },
+  );
 }
 
 export function listOrders(params: {

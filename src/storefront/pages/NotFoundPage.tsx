@@ -1,8 +1,13 @@
 import { Link } from 'react-router-dom';
+import { uiLabel } from '@/shared/lib/storefront-ui';
 import { useOptionalPublicPage } from '@/storefront/hooks/useOptionalPublicPage';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 
 export function NotFoundPage() {
   const cmsQuery = useOptionalPublicPage('404');
+  const ui = useStorefrontUi();
+  const fallbackMessage = uiLabel(ui, 'notFoundMessage');
+  const homeLink = uiLabel(ui, 'notFoundHomeLink');
 
   return (
     <div className="mx-auto max-w-lg py-12 text-center">
@@ -14,16 +19,16 @@ export function NotFoundPage() {
           className="prose prose-slate mx-auto mt-4 text-left text-sm"
           dangerouslySetInnerHTML={{ __html: cmsQuery.data.contentHtml }}
         />
-      ) : (
-        <p className="mt-4 text-sm text-theme-muted">
-          Aradığınız sayfa bulunamadı.
+      ) : fallbackMessage ? (
+        <p className="mt-4 text-sm text-theme-muted">{fallbackMessage}</p>
+      ) : null}
+      {homeLink ? (
+        <p className="mt-6">
+          <Link to="/" className="theme-link text-sm">
+            {homeLink}
+          </Link>
         </p>
-      )}
-      <p className="mt-6">
-        <Link to="/" className="theme-link text-sm">
-          ← Ana sayfa
-        </Link>
-      </p>
+      ) : null}
     </div>
   );
 }

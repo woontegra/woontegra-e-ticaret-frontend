@@ -1,59 +1,63 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { FormFieldDefinitionDto } from '@/shared/types/api';
 import { ApiError } from '@/shared/api/client';
 import {
   getPublicForm,
-  submitContact,
   submitPublicForm,
 } from '@/shared/api/contact.api';
+import { uiLabel } from '@/shared/lib/storefront-ui';
 import { Button, Input, Label, Select, Textarea } from '@/shared/ui';
+import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 
 interface ContactFormProps {
   formKey?: string | null;
-  source?: string;
   title?: string;
   description?: string;
   className?: string;
+  initialValues?: Record<string, string>;
 }
 
 export function ContactForm({
   formKey,
-  source = 'contact_page',
   title,
   description,
   className,
+  initialValues = {},
 }: ContactFormProps) {
-  const [standardForm, setStandardForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    subject: '',
-    message: '',
-  });
-  const [dynamicValues, setDynamicValues] = useState<Record<string, string>>({});
+  const ui = useStorefrontUi();
+  const [dynamicValues, setDynamicValues] = useState<Record<string, string>>(
+    () => ({ ...initialValues }),
+  );
   const [submitted, setSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const resolvedFormKey = formKey?.trim() || null;
+
   const formQuery = useQuery({
-    queryKey: ['public', 'forms', formKey],
-    queryFn: () => getPublicForm(formKey!),
-    enabled: Boolean(formKey),
+    queryKey: ['public', 'forms', resolvedFormKey],
+    queryFn: () => getPublicForm(resolvedFormKey!),
+    enabled: Boolean(resolvedFormKey),
   });
+
+  useEffect(() => {
+    if (!formQuery.data?.fields.length) return;
+    const next: Record<string, string> = {};
+    for (const field of formQuery.data.fields) {
+      const value = resolveContactInitialValue(field, initialValues);
+      if (value) next[field.name] = value;
+    }
+    if (Object.keys(next).length > 0) {
+      setDynamicValues((prev) => ({ ...prev, ...next }));
+    }
+  }, [formQuery.data, initialValues]);
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      if (formKey && formQuery.data) {
-        return submitPublicForm(formKey, dynamicValues);
+      if (!resolvedFormKey || !formQuery.data) {
+        throw new Error('Form not configured');
       }
-      return submitContact({
-        name: standardForm.name.trim(),
-        email: standardForm.email.trim(),
-        phone: standardForm.phone.trim() || null,
-        subject: standardForm.subject.trim() || null,
-        message: standardForm.message.trim(),
-        source,
-      });
+      return submitPublicForm(resolvedFormKey, dynamicValues);
     },
     onSuccess: () => {
       setSubmitted(true);
@@ -61,35 +65,47 @@ export function ContactForm({
     },
     onError: (error) => {
       setErrorMessage(
-        error instanceof ApiError ? error.message : 'Gönderim başarısız',
+        error instanceof ApiError
+          ? error.message
+          : uiLabel(ui, 'contactFormError') ?? '',
       );
     },
   });
-
-  const handleStandardSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    submitMutation.mutate();
-  };
 
   const handleDynamicSubmit = (event: FormEvent) => {
     event.preventDefault();
     submitMutation.mutate();
   };
 
-  if (formKey && formQuery.isLoading) {
-    return <p className="text-sm text-theme-muted">Form yükleniyor…</p>;
+  if (!resolvedFormKey) {
+    return null;
   }
 
-  if (formKey && formQuery.isError) {
-    return (
-      <p className="text-sm text-red-600">
-        Form bulunamadı veya pasif. Lütfen yönetici ile iletişime geçin.
-      </p>
-    );
+  const loadingLabel = uiLabel(ui, 'contactFormLoading');
+  const notFoundLabel = uiLabel(ui, 'contactFormNotFound');
+  const submittingLabel = uiLabel(ui, 'contactFormSubmitting');
+  const selectPlaceholder = uiLabel(ui, 'formSelectPlaceholder');
+
+  if (formQuery.isLoading) {
+    return loadingLabel ? (
+      <p className="text-sm text-theme-muted">{loadingLabel}</p>
+    ) : null;
   }
 
-  const fields = formKey ? (formQuery.data?.fields ?? []) : null;
+  if (formQuery.isError) {
+    return notFoundLabel ? (
+      <p className="text-sm text-red-600">{notFoundLabel}</p>
+    ) : null;
+  }
+
+  const fields = formQuery.data?.fields ?? [];
   const displayTitle = title ?? formQuery.data?.name;
+  const successMessage = formQuery.data?.successMessage?.trim();
+  const submitLabel = formQuery.data?.submitButtonLabel?.trim();
+
+  if (!fields.length || !submitLabel) {
+    return null;
+  }
 
   return (
     <div className={className}>
@@ -100,17 +116,16 @@ export function ContactForm({
         <p className="mb-4 text-sm text-theme-muted">{description}</p>
       ) : null}
 
-      {submitted ? (
-        <p className="text-sm text-theme-muted">
-          Mesajınız alındı. En kısa sürede size dönüş yapılacaktır.
-        </p>
-      ) : fields ? (
+      {submitted && successMessage ? (
+        <p className="text-sm text-theme-muted">{successMessage}</p>
+      ) : (
         <form className="space-y-3" onSubmit={handleDynamicSubmit}>
           {fields.map((field) => (
             <DynamicField
               key={field.name}
               field={field}
               value={dynamicValues[field.name] ?? ''}
+              selectPlaceholder={selectPlaceholder}
               onChange={(value) =>
                 setDynamicValues((prev) => ({ ...prev, [field.name]: value }))
               }
@@ -120,71 +135,9 @@ export function ContactForm({
             <p className="text-sm text-red-600">{errorMessage}</p>
           ) : null}
           <Button type="submit" disabled={submitMutation.isPending}>
-            {submitMutation.isPending ? 'Gönderiliyor…' : 'Gönder'}
-          </Button>
-        </form>
-      ) : (
-        <form className="space-y-3" onSubmit={handleStandardSubmit}>
-          <div>
-            <Label htmlFor="contact-name">Ad Soyad</Label>
-            <Input
-              id="contact-name"
-              required
-              value={standardForm.name}
-              onChange={(e) =>
-                setStandardForm((p) => ({ ...p, name: e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <Label htmlFor="contact-email">E-posta</Label>
-            <Input
-              id="contact-email"
-              type="email"
-              required
-              value={standardForm.email}
-              onChange={(e) =>
-                setStandardForm((p) => ({ ...p, email: e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <Label htmlFor="contact-phone">Telefon (opsiyonel)</Label>
-            <Input
-              id="contact-phone"
-              value={standardForm.phone}
-              onChange={(e) =>
-                setStandardForm((p) => ({ ...p, phone: e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <Label htmlFor="contact-subject">Konu (opsiyonel)</Label>
-            <Input
-              id="contact-subject"
-              value={standardForm.subject}
-              onChange={(e) =>
-                setStandardForm((p) => ({ ...p, subject: e.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <Label htmlFor="contact-message">Mesaj</Label>
-            <Textarea
-              id="contact-message"
-              required
-              rows={5}
-              value={standardForm.message}
-              onChange={(e) =>
-                setStandardForm((p) => ({ ...p, message: e.target.value }))
-              }
-            />
-          </div>
-          {errorMessage ? (
-            <p className="text-sm text-red-600">{errorMessage}</p>
-          ) : null}
-          <Button type="submit" disabled={submitMutation.isPending}>
-            {submitMutation.isPending ? 'Gönderiliyor…' : 'Gönder'}
+            {submitMutation.isPending && submittingLabel
+              ? submittingLabel
+              : submitLabel}
           </Button>
         </form>
       )}
@@ -192,13 +145,45 @@ export function ContactForm({
   );
 }
 
+function resolveContactInitialValue(
+  field: FormFieldDefinitionDto,
+  initialValues: Record<string, string>,
+): string {
+  if (initialValues[field.name]) return initialValues[field.name];
+
+  const lowerName = field.name.toLowerCase();
+  const lowerLabel = field.label.toLowerCase();
+
+  if (
+    initialValues.konu &&
+    (lowerName.includes('konu') ||
+      lowerName.includes('subject') ||
+      lowerLabel.includes('konu'))
+  ) {
+    return initialValues.konu;
+  }
+
+  if (
+    initialValues.mesaj &&
+    (lowerName.includes('mesaj') ||
+      lowerName.includes('message') ||
+      lowerLabel.includes('mesaj'))
+  ) {
+    return initialValues.mesaj;
+  }
+
+  return '';
+}
+
 function DynamicField({
   field,
   value,
+  selectPlaceholder,
   onChange,
 }: {
   field: FormFieldDefinitionDto;
   value: string;
+  selectPlaceholder?: string;
   onChange: (value: string) => void;
 }) {
   const id = `field-${field.name}`;
@@ -228,7 +213,9 @@ function DynamicField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
         >
-          <option value="">Seçin…</option>
+          {selectPlaceholder ? (
+            <option value="">{selectPlaceholder}</option>
+          ) : null}
           {(field.options ?? []).map((option) => (
             <option key={option} value={option}>
               {option}
