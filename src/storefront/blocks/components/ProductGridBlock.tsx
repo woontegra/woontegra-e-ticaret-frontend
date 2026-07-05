@@ -1,0 +1,85 @@
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import {
+  getProductPublicPath,
+  listPublicProducts,
+} from '@/shared/api/products.api';
+import { parseBlockSettings } from '@/shared/lib/block-model';
+import type { PublicPageBlockDto } from '@/shared/types/api';
+import { BlockEmptyState } from '../BlockEmptyState';
+import { BlockSectionWrapper } from '../BlockSectionWrapper';
+import { SectionHeading } from '../SectionHeading';
+import { CatalogGridSkeleton } from './CatalogGridSkeleton';
+
+interface BlockComponentProps {
+  block: PublicPageBlockDto;
+}
+
+function formatPrice(value: number | null) {
+  if (value === null) return null;
+  return new Intl.NumberFormat('tr-TR', {
+    style: 'currency',
+    currency: 'TRY',
+  }).format(value);
+}
+
+export function ProductGridBlock({ block }: BlockComponentProps) {
+  const settings = parseBlockSettings(block.settings);
+  const limit = settings.itemCount ?? 8;
+  const columns = Math.min(settings.columns ?? 4, 6);
+
+  const productsQuery = useQuery({
+    queryKey: ['public', 'products', { limit }],
+    queryFn: () => listPublicProducts({ limit }),
+    retry: false,
+    staleTime: 60_000,
+  });
+
+  const products = productsQuery.data?.items ?? [];
+
+  return (
+    <BlockSectionWrapper block={block}>
+      <SectionHeading block={block} />
+      {productsQuery.isPending ? (
+        <CatalogGridSkeleton columns={columns} count={Math.min(limit, 8)} />
+      ) : products.length === 0 ? (
+        <BlockEmptyState message="Henüz gösterilecek ürün yok." />
+      ) : (
+        <div
+          className="grid w-full gap-4"
+          style={{
+            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+          }}
+        >
+          {products.map((product) => (
+            <Link
+              key={product.id}
+              to={getProductPublicPath(product)}
+              className="theme-card group overflow-hidden transition hover:opacity-95"
+            >
+              {product.imageUrl ? (
+                <img
+                  src={product.imageUrl}
+                  alt={product.name}
+                  className="aspect-square w-full object-cover"
+                />
+              ) : (
+                <div className="aspect-square bg-slate-100" />
+              )}
+              <div className="p-3">
+                <h3 className="text-sm font-medium group-hover:underline">
+                  {product.name}
+                </h3>
+                {formatPrice(product.price) ? (
+                  <p className="mt-1 text-sm text-theme-muted">
+                    {formatPrice(product.price)}
+                  </p>
+                ) : null}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </BlockSectionWrapper>
+  );
+}

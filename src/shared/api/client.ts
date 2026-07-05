@@ -27,16 +27,17 @@ function getBaseUrl(): string {
 
 export const API_BASE_URL = getBaseUrl();
 
-interface RequestOptions extends Omit<RequestInit, 'body'> {
+interface RequestOptions extends Omit<RequestInit, 'body' | 'credentials'> {
   body?: unknown;
   auth?: boolean;
+  withCredentials?: boolean;
 }
 
 export async function apiClient<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { body, auth = true, headers: customHeaders, ...rest } = options;
+  const { body, auth = true, withCredentials = false, headers: customHeaders, ...rest } = options;
 
   const headers = new Headers(customHeaders);
 
@@ -54,6 +55,7 @@ export async function apiClient<T>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
     headers,
+    credentials: withCredentials ? 'include' : 'same-origin',
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 

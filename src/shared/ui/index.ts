@@ -17,4 +17,6 @@ export {
   TableRow,
 } from './Table';
 export { MediaField } from './MediaField';
+export { MediaMultiField } from './MediaMultiField';
+export { RichTextEditor } from './RichTextEditor';
 export { Textarea } from './Textarea';

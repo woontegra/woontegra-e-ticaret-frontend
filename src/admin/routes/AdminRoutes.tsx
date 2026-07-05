@@ -4,8 +4,27 @@ import { RequireRole } from '@/shared/auth/RequireRole';
 import { AdminLayout } from '@/admin/layout/AdminLayout';
 import { DashboardPage } from '@/admin/pages/DashboardPage';
 import { LoginPage } from '@/admin/pages/LoginPage';
+import { BlogCategoriesPage } from '@/admin/pages/BlogCategoriesPage';
+import { BlogPostEditPage } from '@/admin/pages/BlogPostEditPage';
+import { BlogPostsListPage } from '@/admin/pages/BlogPostsListPage';
+import { MenuManagementPage } from '@/admin/pages/MenuManagementPage';
+import { MediaPage } from '@/admin/pages/MediaPage';
 import { ModulePlaceholderPage } from '@/admin/pages/ModulePlaceholderPage';
+import { OrdersListPage } from '@/admin/pages/OrdersListPage';
+import { OrderDetailPage } from '@/admin/pages/OrderDetailPage';
+import { PageEditPage } from '@/admin/pages/PageEditPage';
+import { PagesListPage } from '@/admin/pages/PagesListPage';
 import { SettingsLayout } from '@/admin/layout/SettingsLayout';
+import { ThemeLayout } from '@/admin/layout/ThemeLayout';
+import { HeaderSettingsPage } from '@/admin/pages/HeaderSettingsPage';
+import { FooterManagementPage } from '@/admin/pages/FooterManagementPage';
+import { ThemeSettingsPage } from '@/admin/pages/ThemeSettingsPage';
+import { PageBuilderPage } from '@/admin/pages/PageBuilderPage';
+import { ProductEditPage } from '@/admin/pages/ProductEditPage';
+import { ProductCategoriesPage } from '@/admin/pages/ProductCategoriesPage';
+import { ProductsListPage } from '@/admin/pages/ProductsListPage';
+import { BrandsPage } from '@/admin/pages/BrandsPage';
+import { ProductAttributesPage } from '@/admin/pages/ProductAttributesPage';
 import { CompanySettingsPage } from '@/admin/pages/CompanySettingsPage';
 import { SiteSettingsPage } from '@/admin/pages/SiteSettingsPage';
 import { UnauthorizedPage } from '@/admin/pages/UnauthorizedPage';
@@ -37,7 +56,39 @@ export function AdminRoutes() {
           path="products"
           element={
             <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN', 'STAFF']}>
-              <ModulePlaceholderPage title="Ürünler" />
+              <ProductsListPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="products/categories"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+              <ProductCategoriesPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="products/brands"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+              <BrandsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="products/attributes"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+              <ProductAttributesPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="products/:id"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN', 'STAFF']}>
+              <ProductEditPage />
             </RequireRole>
           }
         />
@@ -45,7 +96,15 @@ export function AdminRoutes() {
           path="orders"
           element={
             <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN', 'STAFF']}>
-              <ModulePlaceholderPage title="Siparişler" />
+              <OrdersListPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="orders/:id"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN', 'STAFF']}>
+              <OrderDetailPage />
             </RequireRole>
           }
         />
@@ -59,9 +118,53 @@ export function AdminRoutes() {
         />
         <Route
           path="content"
+          element={<Navigate to="/admin/content/pages" replace />}
+        />
+        <Route
+          path="content/pages"
           element={
             <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
-              <ModulePlaceholderPage title="İçerik Yönetimi" />
+              <PagesListPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="content/pages/:id"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+              <PageEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="content/blog/posts"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+              <BlogPostsListPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="content/blog/posts/:id"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+              <BlogPostEditPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="content/blog/categories"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+              <BlogCategoriesPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="content/menus"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+              <MenuManagementPage />
             </RequireRole>
           }
         />
@@ -69,7 +172,7 @@ export function AdminRoutes() {
           path="media"
           element={
             <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
-              <ModulePlaceholderPage title="Medya" />
+              <MediaPage />
             </RequireRole>
           }
         />
@@ -77,10 +180,16 @@ export function AdminRoutes() {
           path="theme"
           element={
             <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
-              <ModulePlaceholderPage title="Tema & Tasarım" />
+              <ThemeLayout />
             </RequireRole>
           }
-        />
+        >
+          <Route index element={<Navigate to="settings" replace />} />
+          <Route path="settings" element={<ThemeSettingsPage />} />
+          <Route path="header" element={<HeaderSettingsPage />} />
+          <Route path="footer" element={<FooterManagementPage />} />
+          <Route path="builder" element={<PageBuilderPage />} />
+        </Route>
         <Route
           path="shipping"
           element={

@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { PublicFooter } from '@/storefront/components/PublicFooter';
 import { PublicHeader } from '@/storefront/components/PublicHeader';
 import { SeoHead } from '@/storefront/components/SeoHead';
@@ -6,10 +6,24 @@ import {
   usePublicCompanySettings,
   usePublicSiteSettings,
 } from '@/storefront/hooks/usePublicSettings';
+import { usePublicFooter } from '@/storefront/hooks/usePublicFooter';
+import { usePublicMenus } from '@/storefront/hooks/usePublicMenus';
+import { usePublicHeaderSettings } from '@/storefront/hooks/usePublicHeaderSettings';
+import { usePublicTheme } from '@/storefront/hooks/usePublicTheme';
+import { useCart } from '@/storefront/hooks/useCart';
+import { ThemeProvider } from '@/storefront/theme/ThemeProvider';
 
 export function PublicLayout() {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+
   const siteQuery = usePublicSiteSettings();
   const companyQuery = usePublicCompanySettings();
+  const menusQuery = usePublicMenus();
+  const footerQuery = usePublicFooter();
+  const themeQuery = usePublicTheme();
+  const headerSettingsQuery = usePublicHeaderSettings();
+  const { itemCount } = useCart();
 
   if (siteQuery.data?.maintenanceMode) {
     return (
@@ -22,10 +36,11 @@ export function PublicLayout() {
                 {siteQuery.data.siteName}
               </p>
             ) : null}
-            <p className="mt-3 text-sm text-slate-600">
-              {siteQuery.data.siteDescription ||
-                'Site şu anda bakım modundadır. Lütfen daha sonra tekrar deneyin.'}
-            </p>
+            {(siteQuery.data.siteDescription || siteQuery.data.defaultSeoDescription) && (
+              <p className="mt-3 text-sm text-slate-600">
+                {siteQuery.data.siteDescription || siteQuery.data.defaultSeoDescription}
+              </p>
+            )}
           </div>
         </div>
       </>
@@ -33,13 +48,24 @@ export function PublicLayout() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <ThemeProvider theme={themeQuery.data}>
       <SeoHead siteSettings={siteQuery.data} />
-      <PublicHeader siteSettings={siteQuery.data} />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <PublicHeader
+        siteSettings={siteQuery.data}
+        menus={menusQuery.data}
+        headerSettings={headerSettingsQuery.data}
+        cartItemCount={itemCount}
+      />
+      <main
+        className={
+          isHomePage
+            ? 'w-full flex-1'
+            : 'theme-container theme-container-padding mx-auto w-full flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8'
+        }
+      >
         <Outlet context={{ siteSettings: siteQuery.data, companySettings: companyQuery.data }} />
       </main>
-      <PublicFooter companySettings={companyQuery.data} />
-    </div>
+      <PublicFooter footer={footerQuery.data} />
+    </ThemeProvider>
   );
 }

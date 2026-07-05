@@ -10,7 +10,15 @@ interface DrawerProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   side?: 'left' | 'right';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
+
+const sizeClasses = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-2xl',
+};
 
 export function Drawer({
   isOpen,
@@ -19,6 +27,7 @@ export function Drawer({
   children,
   footer,
   side = 'right',
+  size = 'sm',
 }: DrawerProps) {
   useEffect(() => {
     if (!isOpen) return;
@@ -48,7 +57,8 @@ export function Drawer({
       />
       <aside
         className={cn(
-          'absolute top-0 flex h-full w-full max-w-sm flex-col border-slate-200 bg-white shadow-xl',
+          'absolute top-0 flex h-full w-full flex-col border-slate-200 bg-white shadow-xl',
+          sizeClasses[size],
           side === 'right' ? 'right-0 border-l' : 'left-0 border-r',
         )}
       >

@@ -6,7 +6,6 @@ import { usePublicCompanySettings, usePublicSiteSettings } from '@/storefront/ho
 export function ContactPage() {
   const siteQuery = usePublicSiteSettings();
   const companyQuery = usePublicCompanySettings();
-  const company = companyQuery.data;
 
   return (
     <>
@@ -18,7 +17,7 @@ export function ContactPage() {
             : undefined
         }
       />
-      <ContactContent company={company} />
+      <ContactContent company={companyQuery.data} />
     </>
   );
 }
@@ -30,6 +29,7 @@ function ContactContent({ company }: { company?: CompanySettingDto }) {
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <ContactItem label="Firma" value={company?.companyName} />
+        <ContactItem label="Ticari unvan" value={company?.tradeName} />
         <ContactItem label="Telefon" value={company?.phone} href={`tel:${company?.phone}`} />
         <ContactItem
           label="WhatsApp"
@@ -47,6 +47,9 @@ function ContactContent({ company }: { company?: CompanySettingDto }) {
           href={company?.supportEmail ? `mailto:${company.supportEmail}` : undefined}
         />
         <ContactItem label="Çalışma saatleri" value={company?.workingHours} />
+        <ContactItem label="Vergi no" value={company?.taxNumber} />
+        <ContactItem label="Vergi dairesi" value={company?.taxOffice} />
+        <ContactItem label="MERSİS no" value={company?.mersisNumber ?? undefined} />
       </div>
 
       {(company?.address || company?.city || company?.district) && (
