@@ -238,6 +238,16 @@ export function OrderSuccessPage() {
           </div>
         ) : null}
 
+        {order.paymentStatus === 'FAILED' ? (
+          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-left text-sm text-red-900">
+            Ödeme başarısız oldu. Tekrar denemek için{' '}
+            <Link to="/odeme" className="font-medium underline">
+              ödeme sayfasına
+            </Link>{' '}
+            dönebilirsiniz.
+          </div>
+        ) : null}
+
         {hasSaasProducts && order.paymentStatus === 'WAITING_BANK_TRANSFER' ? (
           <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-900">
             Ödemeniz onaylandıktan sonra SaaS hesabınız oluşturulacaktır.

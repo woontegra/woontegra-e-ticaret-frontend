@@ -18,6 +18,10 @@ import {
   updateOrderStatus,
 } from '@/shared/api/orders.api';
 import { SAAS_PROVISION_STATUS_LABELS } from '@/shared/api/saas.api';
+import {
+  PAYMENT_METHOD_TYPE_LABELS,
+  PAYMENT_TRANSACTION_STATUS_LABELS,
+} from '@/shared/api/payment.api';
 import { listActiveShippingCarriers } from '@/shared/api/shipping.api';
 import {
   Badge,
@@ -144,6 +148,7 @@ export function OrderDetailPanel({ order, onUpdated }: OrderDetailPanelProps) {
   const digitalDeliveryItems = order.digitalDelivery ?? [];
   const licenseDeliveryItems = order.licenseDelivery ?? [];
   const saasDeliveryItems = order.saasDelivery ?? [];
+  const paymentTransactions = order.paymentTransactions ?? [];
   const [revealedPasswords, setRevealedPasswords] = useState<
     Record<string, boolean>
   >({});
@@ -212,6 +217,16 @@ export function OrderDetailPanel({ order, onUpdated }: OrderDetailPanelProps) {
                 </option>
               ))}
             </Select>
+            {order.paymentStatus === 'WAITING_BANK_TRANSFER' ? (
+              <Button
+                size="sm"
+                className="mt-2"
+                disabled={paymentMutation.isPending}
+                onClick={() => paymentMutation.mutate('PAID')}
+              >
+                Ödemeyi Onayla
+              </Button>
+            ) : null}
           </div>
           <div>
             <Label>Kargo durumu</Label>
@@ -235,6 +250,57 @@ export function OrderDetailPanel({ order, onUpdated }: OrderDetailPanelProps) {
             </Select>
           </div>
         </div>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-semibold text-slate-800">Ödeme bilgisi</h3>
+        <dl className="mt-2 space-y-1 text-sm">
+          <div>
+            <dt className="text-slate-500">Yöntem</dt>
+            <dd>
+              {order.paymentMethodName ?? '—'}
+              {order.paymentMethodType
+                ? ` (${PAYMENT_METHOD_TYPE_LABELS[order.paymentMethodType] ?? order.paymentMethodType})`
+                : ''}
+            </dd>
+          </div>
+        </dl>
+        {paymentTransactions.length > 0 ? (
+          <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50 text-left text-slate-500">
+                  <th className="px-3 py-2">Sağlayıcı</th>
+                  <th className="px-3 py-2">Durum</th>
+                  <th className="px-3 py-2">Tutar</th>
+                  <th className="px-3 py-2">Referans</th>
+                  <th className="px-3 py-2">Tarih</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentTransactions.map((tx) => (
+                  <tr key={tx.id} className="border-b border-slate-50">
+                    <td className="px-3 py-2">
+                      {PAYMENT_METHOD_TYPE_LABELS[tx.provider] ?? tx.provider}
+                    </td>
+                    <td className="px-3 py-2">
+                      {PAYMENT_TRANSACTION_STATUS_LABELS[tx.status] ?? tx.status}
+                    </td>
+                    <td className="px-3 py-2">{formatMoney(tx.amount)}</td>
+                    <td className="px-3 py-2 font-mono text-xs">
+                      {tx.providerReference ?? '—'}
+                    </td>
+                    <td className="px-3 py-2">
+                      {new Date(tx.createdAt).toLocaleString('tr-TR')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-slate-500">Ödeme işlem kaydı yok.</p>
+        )}
       </section>
 
       <section>

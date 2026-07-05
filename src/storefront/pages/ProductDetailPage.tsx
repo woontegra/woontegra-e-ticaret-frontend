@@ -37,6 +37,15 @@ import { uiLabel } from '@/shared/lib/storefront-ui';
 import { useCart } from '@/storefront/hooks/useCart';
 import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 import { Badge, Button } from '@/shared/ui';
+import { ProductImageFallback } from '@/storefront/components/media/ImageFallback';
+import {
+  ProductDeliveryPanel,
+  ProductDetailCrossLinks,
+  ProductFaqSection,
+  ProductFeaturesSection,
+  ProductTrustCards,
+} from '@/storefront/components/product/ProductDetailSections';
+import { Mail } from 'lucide-react';
 
 function buildFreeDownloadHref(productSlug: string, fileType?: string | null) {
   const type = fileType === 'setup' || fileType === 'portable' ? fileType : 'other';
@@ -173,11 +182,16 @@ export function ProductDetailPage({ productKind }: ProductDetailPageProps = {}) 
 
   if (productQuery.isPending) {
     return (
-      <div className="mx-auto max-w-5xl animate-pulse space-y-6">
+      <div className="mx-auto max-w-6xl animate-pulse space-y-6">
         <div className="h-8 w-1/2 rounded bg-slate-100" />
-        <div className="aspect-[16/9] rounded-lg bg-slate-100" />
-        <div className="h-4 w-full rounded bg-slate-100" />
-        <div className="h-4 w-5/6 rounded bg-slate-100" />
+        <div className="grid gap-8 lg:grid-cols-2">
+          <div className="aspect-square rounded-2xl bg-slate-100" />
+          <div className="space-y-4">
+            <div className="h-6 w-3/4 rounded bg-slate-100" />
+            <div className="h-4 w-full rounded bg-slate-100" />
+            <div className="h-10 w-40 rounded bg-slate-100" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -205,6 +219,10 @@ export function ProductDetailPage({ productKind }: ProductDetailPageProps = {}) 
   }
 
   const downloadFiles = product.downloadFiles?.files ?? [];
+  const canonicalPath =
+    productKind === 'SOFTWARE' || product.productKind === 'SOFTWARE'
+      ? `/yazilimlar/${product.slug}`
+      : location.pathname;
 
   return (
     <>
@@ -225,238 +243,268 @@ export function ProductDetailPage({ productKind }: ProductDetailPageProps = {}) 
         )}
         canonicalUrl={buildCanonicalUrl(
           product.canonicalUrl,
-          productKind === 'SOFTWARE' || product.productKind === 'SOFTWARE'
-            ? `/yazilimlar/${product.slug}`
-            : location.pathname,
+          canonicalPath,
           seoSettings,
           siteQuery.data,
         )}
         robotsIndex={product.robotsIndex}
       />
 
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-6xl">
         {uiLabel(ui, 'productBackLink') ? (
           <Link to={listPath} className="text-sm text-theme-muted hover:underline">
             {uiLabel(ui, 'productBackLink')}
           </Link>
         ) : null}
 
-        <div className="mt-4 grid gap-8 lg:grid-cols-2">
-          <div>
-            {displayImage ? (
-              <img
-                src={displayImage}
-                alt={product.name}
-                className="w-full rounded-lg object-cover"
-              />
-            ) : (
-              <div className="aspect-square rounded-lg bg-slate-100" />
-            )}
-            {product.galleryImageUrls.length > 0 ? (
-              <div className="mt-3 grid grid-cols-4 gap-2">
-                {product.galleryImageUrls.map((url) => (
-                  <img
-                    key={url}
-                    src={url}
-                    alt=""
-                    className="aspect-square rounded-md object-cover"
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <div>
-            <div className="flex flex-wrap gap-2">
-              {product.isNew && badgeNew ? <Badge>{badgeNew}</Badge> : null}
-              {product.isFeatured && badgeFeatured ? (
-                <Badge>{badgeFeatured}</Badge>
+        <section className="mt-4 overflow-hidden rounded-2xl border border-theme-border bg-white shadow-sm">
+          <div className="grid gap-0 lg:grid-cols-2">
+            <div className="relative bg-theme-surface p-4 sm:p-6 lg:p-8">
+              {displayImage ? (
+                <img
+                  src={displayImage}
+                  alt={product.name}
+                  className="w-full rounded-xl object-cover shadow-sm"
+                />
+              ) : (
+                <ProductImageFallback
+                  title={product.name}
+                  deliveryMode={product.deliveryMode}
+                  aspectClassName="aspect-square w-full rounded-xl"
+                />
+              )}
+              {product.galleryImageUrls.length > 0 ? (
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  {product.galleryImageUrls.map((url) => (
+                    <img
+                      key={url}
+                      src={url}
+                      alt=""
+                      className="aspect-square rounded-md object-cover ring-1 ring-theme-border"
+                    />
+                  ))}
+                </div>
               ) : null}
-              {product.isBestSeller && badgeBestSeller ? (
-                <Badge>{badgeBestSeller}</Badge>
-              ) : null}
-              {deliveryBadge ? <Badge>{deliveryBadge}</Badge> : null}
             </div>
 
-            <h1 className="theme-heading mt-3 text-2xl sm:text-3xl">
-              {product.name}
-            </h1>
+            <div className="flex flex-col p-6 sm:p-8 lg:p-10">
+              <div className="flex flex-wrap gap-2">
+                {product.isNew && badgeNew ? <Badge>{badgeNew}</Badge> : null}
+                {product.isFeatured && badgeFeatured ? (
+                  <Badge>{badgeFeatured}</Badge>
+                ) : null}
+                {product.isBestSeller && badgeBestSeller ? (
+                  <Badge>{badgeBestSeller}</Badge>
+                ) : null}
+                {deliveryBadge ? (
+                  <Badge className="bg-slate-900 text-white">{deliveryBadge}</Badge>
+                ) : null}
+              </div>
 
-            {product.version ? (
-              <p className="mt-1 text-sm text-theme-muted">
-                Sürüm {product.version}
-              </p>
-            ) : null}
+              <h1 className="theme-heading mt-4 text-2xl sm:text-3xl lg:text-4xl">
+                {product.name}
+              </h1>
 
-            {product.shortDescription ? (
-              <p className="mt-2 text-theme-muted">{product.shortDescription}</p>
-            ) : null}
+              {product.version ? (
+                <p className="mt-1 text-sm text-theme-muted">
+                  Sürüm {product.version}
+                </p>
+              ) : null}
 
-            {deliveryHint ? (
-              <p className="mt-3 text-sm text-slate-600">{deliveryHint}</p>
-            ) : null}
+              {product.shortDescription ? (
+                <p className="mt-3 text-base leading-relaxed text-theme-muted">
+                  {product.shortDescription}
+                </p>
+              ) : null}
 
-            {priceLabel ? (
-              <p className="mt-4 text-xl font-semibold">{priceLabel}</p>
-            ) : null}
+              {deliveryHint ? (
+                <p className="mt-3 rounded-lg bg-theme-surface px-3 py-2 text-sm text-theme-text">
+                  {deliveryHint}
+                </p>
+              ) : null}
 
-            {product.featureBullets.length > 0 ? (
-              <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-theme-muted">
-                {product.featureBullets.map((bullet) => (
-                  <li key={bullet}>{bullet}</li>
-                ))}
-              </ul>
-            ) : null}
+              {priceLabel ? (
+                <p className="mt-5 text-3xl font-bold tracking-tight text-theme-text">
+                  {priceLabel}
+                </p>
+              ) : null}
 
-            <ProductVariantSelector
-              variantAttributes={product.variantAttributes}
-              variants={product.variants}
-              onVariantChange={setSelectedVariant}
-            />
+              <ProductVariantSelector
+                variantAttributes={product.variantAttributes}
+                variants={product.variants}
+                onVariantChange={setSelectedVariant}
+              />
 
-            {product.category ? (
-              <p className="mt-2 text-sm text-theme-muted">
-                <Link
-                  to={`/kategori/${product.category.slug}`}
-                  className="hover:underline"
-                >
-                  {product.category.name}
-                </Link>
-              </p>
-            ) : null}
-
-            {product.brand ? (
-              <p className="mt-1 text-sm text-theme-muted">
-                <Link
-                  to={`/marka/${product.brand.slug}`}
-                  className="hover:underline"
-                >
-                  {product.brand.name}
-                </Link>
-              </p>
-            ) : null}
-
-            {primaryAction.type !== 'none' && primaryAction.label ? (
-              <div className="mt-6 space-y-3">
-                {(primaryAction.type === 'add_to_cart' ||
-                  primaryAction.type === 'subscribe') &&
-                canAddToCart ? (
-                  <div className="flex items-center gap-3">
-                    {quantityLabel ? (
-                      <label className="text-sm text-slate-600">
-                        {quantityLabel}
-                        <input
-                          type="number"
-                          min={1}
-                          max={99}
-                          value={quantity}
-                          onChange={(event) =>
-                            setQuantity(
-                              Math.max(1, Number(event.target.value) || 1),
-                            )
-                          }
-                          className="ml-2 w-20 rounded-md border border-slate-200 px-2 py-1.5 text-sm"
-                        />
-                      </label>
-                    ) : null}
+              <div className="mt-6 flex flex-wrap gap-3">
+                {primaryAction.type !== 'none' && primaryAction.label ? (
+                  (primaryAction.type === 'add_to_cart' ||
+                    primaryAction.type === 'subscribe') &&
+                  canAddToCart ? (
+                    <div className="flex flex-wrap items-center gap-3">
+                      {quantityLabel ? (
+                        <label className="text-sm text-theme-muted">
+                          {quantityLabel}
+                          <input
+                            type="number"
+                            min={1}
+                            max={99}
+                            value={quantity}
+                            onChange={(event) =>
+                              setQuantity(
+                                Math.max(1, Number(event.target.value) || 1),
+                              )
+                            }
+                            className="ml-2 w-20 rounded-md border border-theme-border px-2 py-1.5 text-sm"
+                          />
+                        </label>
+                      ) : null}
+                      <Button
+                        onClick={handlePrimaryAction}
+                        disabled={addMutation.isPending}
+                        className="min-w-[10rem]"
+                      >
+                        {addMutation.isPending && addToCartPending
+                          ? addToCartPending
+                          : primaryAction.label}
+                      </Button>
+                    </div>
+                  ) : (
                     <Button
                       onClick={handlePrimaryAction}
                       disabled={addMutation.isPending}
+                      className="min-w-[10rem]"
                     >
-                      {addMutation.isPending && addToCartPending
-                        ? addToCartPending
-                        : primaryAction.label}
+                      {primaryAction.label}
                     </Button>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={handlePrimaryAction}
-                    disabled={addMutation.isPending}
+                  )
+                ) : null}
+
+                <Link
+                  to="/iletisim"
+                  className="theme-btn-secondary inline-flex items-center gap-2 rounded-md border border-theme-border px-4 py-2 text-sm"
+                >
+                  <Mail className="h-4 w-4" />
+                  İletişime geç
+                </Link>
+
+                {product.demoUrl && actionDemo ? (
+                  <a
+                    href={product.demoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="theme-btn-secondary inline-flex items-center rounded-md border border-theme-border px-4 py-2 text-sm"
                   >
-                    {primaryAction.label}
-                  </Button>
-                )}
-                {addError ? (
-                  <p className="text-sm text-red-600">{addError}</p>
+                    {actionDemo}
+                  </a>
                 ) : null}
               </div>
-            ) : null}
 
-            {product.deliveryMode === 'FREE_DOWNLOAD' ? (
-              <div id="product-downloads" className="mt-6 space-y-2">
-                <p className="text-sm font-medium text-slate-800">
-                  İndirilebilir dosyalar
-                </p>
-                {downloadFiles.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {downloadFiles.map((file, index) => {
-                      const href = slug
-                        ? buildFreeDownloadHref(slug, file.type)
-                        : '#';
-                      const isAvailable = file.available !== false && Boolean(file.type);
+              {addError ? (
+                <p className="mt-3 text-sm text-red-600">{addError}</p>
+              ) : null}
 
-                      return isAvailable ? (
-                        <a
-                          key={`${file.label}-${index}`}
-                          href={href}
-                          className="theme-btn-secondary inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"
-                        >
-                          {file.buttonLabel || file.label}
-                        </a>
-                      ) : (
-                        <Button
-                          key={`${file.label}-${index}`}
-                          type="button"
-                          variant="secondary"
-                          disabled
-                          title="İndirme dosyası yakında eklenecek"
-                        >
-                          {file.buttonLabel || file.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-theme-muted">
-                    İndirme dosyası yakında eklenecek.
+              {product.deliveryMode === 'FREE_DOWNLOAD' ? (
+                <div id="product-downloads" className="mt-6 space-y-2">
+                  <p className="text-sm font-semibold text-theme-text">
+                    İndirilebilir dosyalar
                   </p>
-                )}
-              </div>
-            ) : null}
+                  {downloadFiles.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {downloadFiles.map((file, index) => {
+                        const href = slug
+                          ? buildFreeDownloadHref(slug, file.type)
+                          : '#';
+                        const isAvailable =
+                          file.available !== false && Boolean(file.type);
 
-            <div className="mt-6 flex flex-wrap gap-2">
-              {product.demoUrl && actionDemo ? (
-                <a
-                  href={product.demoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="theme-btn-secondary inline-block rounded-md border border-slate-200 px-3 py-2 text-sm"
-                >
-                  {actionDemo}
-                </a>
+                        return isAvailable ? (
+                          <a
+                            key={`${file.label}-${index}`}
+                            href={href}
+                            className="theme-btn-secondary inline-flex items-center rounded-md border border-theme-border px-3 py-2 text-sm hover:bg-theme-surface"
+                          >
+                            {file.buttonLabel || file.label}
+                          </a>
+                        ) : (
+                          <Button
+                            key={`${file.label}-${index}`}
+                            type="button"
+                            variant="secondary"
+                            disabled
+                            title="İndirme dosyası yakında eklenecek"
+                          >
+                            {file.buttonLabel || file.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-theme-muted">
+                      İndirme dosyası yakında eklenecek.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
+              {product.category || product.brand ? (
+                <div className="mt-4 flex flex-wrap gap-3 text-sm text-theme-muted">
+                  {product.category ? (
+                    <Link
+                      to={`/kategori/${product.category.slug}`}
+                      className="hover:underline"
+                    >
+                      {product.category.name}
+                    </Link>
+                  ) : null}
+                  {product.brand ? (
+                    <Link
+                      to={`/marka/${product.brand.slug}`}
+                      className="hover:underline"
+                    >
+                      {product.brand.name}
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {product.tags.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-1">
+                  {product.tags.map((tag) => (
+                    <Badge key={tag}>{tag}</Badge>
+                  ))}
+                </div>
               ) : null}
             </div>
-
-            {product.tags.length > 0 ? (
-              <div className="mt-4 flex flex-wrap gap-1">
-                {product.tags.map((tag) => (
-                  <Badge key={tag}>{tag}</Badge>
-                ))}
-              </div>
-            ) : null}
           </div>
+        </section>
+
+        <div className="mt-8">
+          <ProductTrustCards />
         </div>
 
         {product.descriptionHtml ? (
-          <div
-            className="prose prose-slate mt-10 max-w-none"
-            dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
-          />
+          <section className="mt-12">
+            <h2 className="theme-heading text-xl sm:text-2xl">Ürün açıklaması</h2>
+            <div
+              className="prose prose-slate mt-4 max-w-none rounded-xl border border-theme-border bg-white p-6"
+              dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
+            />
+          </section>
         ) : null}
+
+        <ProductFeaturesSection bullets={product.featureBullets} />
+
+        <div className="mt-8">
+          <ProductDeliveryPanel product={product} />
+        </div>
+
+        <ProductFaqSection />
 
         <ProductAttributesTable attributes={product.attributes} />
 
         {slug ? <ProductReviewsSection productSlug={slug} /> : null}
+
+        <ProductDetailCrossLinks />
       </div>
 
       <CartAddedModal

@@ -272,6 +272,48 @@ function PaymentMethodSection({ method }: { method: PaymentMethodDto }) {
                 }
               />
             </div>
+            <div className="md:col-span-2">
+              <Label>Başarı yönlendirme URL (opsiyonel)</Label>
+              <Input
+                value={paytrConfig.successUrl ?? ''}
+                onChange={(e) =>
+                  setConfig({
+                    ...paytrConfig,
+                    successUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://site.com/siparis-basarili"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Hata yönlendirme URL (opsiyonel)</Label>
+              <Input
+                value={paytrConfig.failUrl ?? ''}
+                onChange={(e) =>
+                  setConfig({
+                    ...paytrConfig,
+                    failUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://site.com/odeme-basarisiz"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label>Callback URL (opsiyonel)</Label>
+              <Input
+                value={paytrConfig.callbackUrl ?? ''}
+                onChange={(e) =>
+                  setConfig({
+                    ...paytrConfig,
+                    callbackUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://api.site.com/api/public/payments/paytr/callback"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Boş bırakılırsa API_PUBLIC_URL üzerinden otomatik oluşturulur.
+              </p>
+            </div>
           </div>
         ) : null}
 

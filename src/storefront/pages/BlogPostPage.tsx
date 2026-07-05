@@ -1,9 +1,11 @@
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getPublicBlogPost } from '@/shared/api/blog.api';
+import { getPublicBlogPost, listPublicBlogPosts } from '@/shared/api/blog.api';
 import { uiLabel } from '@/shared/lib/storefront-ui';
 import { SeoHead } from '@/storefront/components/SeoHead';
 import { ArticleSkeleton } from '@/storefront/components/StorefrontSkeletons';
+import { BlogImageFallback } from '@/storefront/components/media/ImageFallback';
+import { ProductDetailCrossLinks } from '@/storefront/components/product/ProductDetailSections';
 import { usePageSeo } from '@/storefront/hooks/usePageSeo';
 import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 import {
@@ -34,6 +36,16 @@ export function BlogPostPage() {
     enabled: Boolean(slug),
   });
 
+  const relatedQuery = useQuery({
+    queryKey: ['public', 'blog', 'posts', 'related', postQuery.data?.category?.slug],
+    queryFn: () =>
+      listPublicBlogPosts({
+        limit: 4,
+        category: postQuery.data?.category?.slug,
+      }),
+    enabled: Boolean(postQuery.data?.category?.slug),
+  });
+
   if (postQuery.isLoading) {
     return <ArticleSkeleton />;
   }
@@ -60,6 +72,10 @@ export function BlogPostPage() {
   }
 
   const post = postQuery.data;
+  const relatedPosts =
+    relatedQuery.data?.items.filter((item) => item.slug !== post.slug).slice(0, 3) ??
+    [];
+  const isShortContent = (post.readingTime ?? 99) <= 2;
 
   return (
     <>
@@ -92,43 +108,58 @@ export function BlogPostPage() {
       />
 
       <article className="mx-auto max-w-3xl">
+        {backLink ? (
+          <Link to="/blog" className="text-sm text-theme-muted hover:underline">
+            {backLink}
+          </Link>
+        ) : null}
+
         {post.coverImageUrl ? (
           <LazyImage
             src={post.coverImageUrl}
             alt={post.title}
-            className="mb-6 w-full rounded-lg object-cover"
+            className="mt-4 w-full rounded-2xl object-cover shadow-sm"
           />
-        ) : null}
+        ) : (
+          <div className="mt-4 overflow-hidden rounded-2xl">
+            <BlogImageFallback
+              title={post.title}
+              aspectClassName="aspect-[21/9] w-full"
+            />
+          </div>
+        )}
 
-        {post.category ? (
-          <Badge className="mb-3">{post.category.name}</Badge>
-        ) : null}
-
-        <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
-          {post.title}
-        </h1>
-
-        <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-500">
-          {post.authorName ? <span>{post.authorName}</span> : null}
-          {post.readingTime && readingTimeSuffix ? (
-            <span>
-              {post.readingTime} {readingTimeSuffix}
-            </span>
+        <header className="mt-8">
+          {post.category ? (
+            <Badge className="mb-3">{post.category.name}</Badge>
           ) : null}
-          {post.publishedAt ? (
-            <span>{new Date(post.publishedAt).toLocaleDateString('tr-TR')}</span>
-          ) : null}
-        </div>
 
-        {post.excerpt ? (
-          <p className="mt-4 text-lg text-slate-600">{post.excerpt}</p>
-        ) : null}
+          <h1 className="theme-heading text-2xl sm:text-4xl">{post.title}</h1>
+
+          <div className="mt-4 flex flex-wrap gap-3 text-sm text-theme-muted">
+            {post.authorName ? <span>{post.authorName}</span> : null}
+            {post.readingTime && readingTimeSuffix ? (
+              <span>
+                {post.readingTime} {readingTimeSuffix}
+              </span>
+            ) : null}
+            {post.publishedAt ? (
+              <span>{new Date(post.publishedAt).toLocaleDateString('tr-TR')}</span>
+            ) : null}
+          </div>
+
+          {post.excerpt ? (
+            <p className="mt-5 text-lg leading-relaxed text-theme-muted">
+              {post.excerpt}
+            </p>
+          ) : null}
+        </header>
 
         {post.tags.length > 0 ? (
-          <ul className="mt-4 flex flex-wrap gap-2">
+          <ul className="mt-5 flex flex-wrap gap-2">
             {post.tags.map((tag) => (
               <li key={tag}>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                <span className="rounded-full bg-theme-surface px-2.5 py-0.5 text-xs text-theme-muted ring-1 ring-theme-border">
                   {tag}
                 </span>
               </li>
@@ -137,13 +168,33 @@ export function BlogPostPage() {
         ) : null}
 
         <div
-          className="prose prose-slate mt-8 max-w-none"
+          className="prose prose-slate mt-8 max-w-none rounded-xl border border-theme-border bg-white p-6 sm:p-8"
           dangerouslySetInnerHTML={{ __html: post.contentHtml }}
         />
 
+        {relatedPosts.length > 0 ? (
+          <section className="mt-10">
+            <h2 className="theme-heading text-lg">Benzer yazılar</h2>
+            <ul className="mt-4 space-y-3">
+              {relatedPosts.map((related) => (
+                <li key={related.id}>
+                  <Link
+                    to={`/blog/${related.slug}`}
+                    className="block rounded-lg border border-theme-border bg-white px-4 py-3 text-sm font-medium hover:bg-theme-surface"
+                  >
+                    {related.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {isShortContent ? <ProductDetailCrossLinks className="mt-10" /> : null}
+
         {backLink ? (
           <p className="mt-8 text-sm">
-            <Link to="/blog" className="text-slate-600 hover:text-slate-900">
+            <Link to="/blog" className="text-theme-muted hover:text-theme-text">
               {backLink}
             </Link>
           </p>

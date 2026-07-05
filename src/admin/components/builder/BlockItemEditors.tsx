@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type {
   BlockBadgeItem,
   BlockBrandLogoItem,
   BlockFaqItem,
-  BlockSlideItem,
   BlockTestimonialItem,
 } from '@/shared/lib/block-model';
-import { Button, Input, Label, Textarea } from '@/shared/ui';
+import { TRUST_ICON_OPTIONS, type TrustBadgeIconType } from '@/shared/lib/block-variants';
+import { Button, Input, Label, Select, Textarea } from '@/shared/ui';
 
 interface ItemListEditorProps<T> {
   label: string;
@@ -17,6 +18,7 @@ interface ItemListEditorProps<T> {
     item: T,
     index: number,
     update: (patch: Partial<T>) => void,
+    actions: { moveUp: () => void; moveDown: () => void; remove: () => void },
   ) => ReactNode;
 }
 
@@ -31,8 +33,12 @@ function ItemListEditor<T>({
     onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   };
 
-  const removeItem = (index: number) => {
-    onChange(items.filter((_, i) => i !== index));
+  const moveItem = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= items.length) return;
+    const next = [...items];
+    [next[index], next[target]] = [next[target]!, next[index]!];
+    onChange(next);
   };
 
   return (
@@ -59,15 +65,16 @@ function ItemListEditor<T>({
               key={index}
               className="space-y-2 rounded-md border border-slate-100 bg-slate-50 p-3"
             >
-              {renderItem(item, index, (patch) => updateItem(index, patch))}
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => removeItem(index)}
-              >
-                Kaldır
-              </Button>
+              {renderItem(
+                item,
+                index,
+                (patch) => updateItem(index, patch),
+                {
+                  moveUp: () => moveItem(index, -1),
+                  moveDown: () => moveItem(index, 1),
+                  remove: () => onChange(items.filter((_, i) => i !== index)),
+                },
+              )}
             </div>
           ))}
         </div>
@@ -87,57 +94,6 @@ export function BlockItemEditors({
   content,
   onChange,
 }: BlockItemEditorsProps) {
-  if (blockType === 'HERO_SLIDER') {
-    const slides = (content.slides as BlockSlideItem[] | undefined) ?? [];
-    return (
-      <ItemListEditor
-        label="Slaytlar"
-        items={slides}
-        onChange={(items) => onChange({ slides: items })}
-        createEmpty={() => ({ headline: '', ctaLabel: '', ctaUrl: '' })}
-        renderItem={(item, _index, update) => (
-          <>
-            <div>
-              <Label>Başlık</Label>
-              <Input
-                value={item.headline ?? ''}
-                onChange={(e) => update({ headline: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Alt başlık</Label>
-              <Input
-                value={item.subheadline ?? ''}
-                onChange={(e) => update({ subheadline: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Görsel URL</Label>
-              <Input
-                value={item.imageUrl ?? ''}
-                onChange={(e) => update({ imageUrl: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Buton metni</Label>
-              <Input
-                value={item.ctaLabel ?? ''}
-                onChange={(e) => update({ ctaLabel: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Buton linki</Label>
-              <Input
-                value={item.ctaUrl ?? ''}
-                onChange={(e) => update({ ctaUrl: e.target.value })}
-              />
-            </div>
-          </>
-        )}
-      />
-    );
-  }
-
   if (blockType === 'TRUST_BADGES') {
     const badges = (content.badges as BlockBadgeItem[] | undefined) ?? [];
     return (
@@ -145,11 +101,36 @@ export function BlockItemEditors({
         label="Güven rozetleri"
         items={badges}
         onChange={(items) => onChange({ badges: items })}
-        createEmpty={() => ({ label: '', description: '', iconUrl: '' })}
-        renderItem={(item, _index, update) => (
+        createEmpty={() => ({
+          label: '',
+          description: '',
+          iconType: 'SHIELD' as TrustBadgeIconType,
+          isActive: true,
+          sortOrder: badges.length,
+        })}
+        renderItem={(item, _index, update, actions) => (
           <>
+            <div className="flex justify-end gap-1">
+              <Button type="button" size="sm" variant="ghost" onClick={actions.moveUp}>
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={actions.moveDown}>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={actions.remove}>
+                Kaldır
+              </Button>
+            </div>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={item.isActive !== false}
+                onChange={(e) => update({ isActive: e.target.checked })}
+              />
+              Aktif
+            </label>
             <div>
-              <Label>Etiket</Label>
+              <Label>Başlık</Label>
               <Input
                 value={item.label}
                 onChange={(e) => update({ label: e.target.value })}
@@ -163,12 +144,29 @@ export function BlockItemEditors({
               />
             </div>
             <div>
-              <Label>İkon URL</Label>
-              <Input
-                value={item.iconUrl ?? ''}
-                onChange={(e) => update({ iconUrl: e.target.value })}
-              />
+              <Label>İkon tipi</Label>
+              <Select
+                value={item.iconType ?? 'SHIELD'}
+                onChange={(e) =>
+                  update({ iconType: e.target.value as BlockBadgeItem['iconType'] })
+                }
+              >
+                {TRUST_ICON_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
             </div>
+            {item.iconType === 'CUSTOM' ? (
+              <div>
+                <Label>Özel ikon URL</Label>
+                <Input
+                  value={item.iconUrl ?? ''}
+                  onChange={(e) => update({ iconUrl: e.target.value })}
+                />
+              </div>
+            ) : null}
           </>
         )}
       />
@@ -183,8 +181,13 @@ export function BlockItemEditors({
         items={faqItems}
         onChange={(items) => onChange({ faqItems: items })}
         createEmpty={() => ({ question: '', answer: '' })}
-        renderItem={(item, _index, update) => (
+        renderItem={(item, _index, update, actions) => (
           <>
+            <div className="flex justify-end">
+              <Button type="button" size="sm" variant="ghost" onClick={actions.remove}>
+                Kaldır
+              </Button>
+            </div>
             <div>
               <Label>Soru</Label>
               <Input
@@ -215,36 +218,24 @@ export function BlockItemEditors({
         items={testimonials}
         onChange={(items) => onChange({ testimonials: items })}
         createEmpty={() => ({ name: '', quote: '', role: '', avatarUrl: '' })}
-        renderItem={(item, _index, update) => (
+        renderItem={(item, _index, update, actions) => (
           <>
+            <div className="flex justify-end">
+              <Button type="button" size="sm" variant="ghost" onClick={actions.remove}>
+                Kaldır
+              </Button>
+            </div>
             <div>
               <Label>Ad</Label>
-              <Input
-                value={item.name}
-                onChange={(e) => update({ name: e.target.value })}
-              />
+              <Input value={item.name} onChange={(e) => update({ name: e.target.value })} />
             </div>
             <div>
               <Label>Ünvan</Label>
-              <Input
-                value={item.role ?? ''}
-                onChange={(e) => update({ role: e.target.value })}
-              />
+              <Input value={item.role ?? ''} onChange={(e) => update({ role: e.target.value })} />
             </div>
             <div>
               <Label>Alıntı</Label>
-              <Textarea
-                rows={3}
-                value={item.quote}
-                onChange={(e) => update({ quote: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Avatar URL</Label>
-              <Input
-                value={item.avatarUrl ?? ''}
-                onChange={(e) => update({ avatarUrl: e.target.value })}
-              />
+              <Textarea rows={3} value={item.quote} onChange={(e) => update({ quote: e.target.value })} />
             </div>
           </>
         )}
@@ -253,41 +244,36 @@ export function BlockItemEditors({
   }
 
   if (blockType === 'BRAND_LOGOS') {
-    const brandLogos =
-      (content.brandLogos as BlockBrandLogoItem[] | undefined) ?? [];
+    const brandLogos = (content.brandLogos as BlockBrandLogoItem[] | undefined) ?? [];
     return (
       <ItemListEditor
         label="Marka logoları"
         items={brandLogos}
         onChange={(items) => onChange({ brandLogos: items })}
         createEmpty={() => ({ imageUrl: '', name: '', linkUrl: '' })}
-        renderItem={(item, _index, update) => (
+        renderItem={(item, _index, update, actions) => (
           <>
+            <div className="flex justify-end">
+              <Button type="button" size="sm" variant="ghost" onClick={actions.remove}>
+                Kaldır
+              </Button>
+            </div>
             <div>
               <Label>Marka adı</Label>
-              <Input
-                value={item.name ?? ''}
-                onChange={(e) => update({ name: e.target.value })}
-              />
+              <Input value={item.name ?? ''} onChange={(e) => update({ name: e.target.value })} />
             </div>
             <div>
               <Label>Logo URL</Label>
-              <Input
-                value={item.imageUrl}
-                onChange={(e) => update({ imageUrl: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Link</Label>
-              <Input
-                value={item.linkUrl ?? ''}
-                onChange={(e) => update({ linkUrl: e.target.value })}
-              />
+              <Input value={item.imageUrl} onChange={(e) => update({ imageUrl: e.target.value })} />
             </div>
           </>
         )}
       />
     );
+  }
+
+  if (blockType === 'HERO_SLIDER') {
+    return null;
   }
 
   return null;

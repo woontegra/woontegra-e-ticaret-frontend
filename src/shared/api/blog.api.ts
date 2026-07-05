@@ -121,6 +121,12 @@ export function unpublishBlogPost(id: string) {
   });
 }
 
+export function listPublicBlogCategories() {
+  return apiClient<BlogCategoryDto[]>('/api/public/blog/categories', {
+    auth: false,
+  });
+}
+
 export function listPublicBlogPosts(params: PublicBlogListParams = {}) {
   const query = new URLSearchParams();
   if (params.search) query.set('search', params.search);

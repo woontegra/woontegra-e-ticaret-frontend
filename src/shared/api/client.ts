@@ -9,7 +9,9 @@ export class ApiError extends Error {
     public status: number,
     public errors: ApiErrorResponse['errors'],
   ) {
-    super(errors[0]?.message ?? 'Request failed');
+    const first = errors[0];
+    const fieldHint = first?.field ? ` (${first.field})` : '';
+    super(first?.message ? `${first.message}${fieldHint}` : 'Request failed');
     this.name = 'ApiError';
   }
 }

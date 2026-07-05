@@ -1,7 +1,7 @@
 import type { ProductKind } from '@/shared/types/api';
 import { useLocation } from 'react-router-dom';
 import { SeoHead } from '@/storefront/components/SeoHead';
-import { StorefrontPageHeading } from '@/storefront/components/StorefrontPageHeading';
+import { SoftwareCatalogHero } from '@/storefront/components/catalog/SoftwareCatalogHero';
 import { ProductListingView } from '@/storefront/components/catalog/ProductListingView';
 import { useOptionalPublicPage } from '@/storefront/hooks/useOptionalPublicPage';
 import { usePageSeo } from '@/storefront/hooks/usePageSeo';
@@ -28,6 +28,7 @@ export function ProductsIndexPage({
     cmsSlug ?? (productKind === 'SOFTWARE' ? 'yazilimlar' : 'urunler');
   const cmsQuery = useOptionalPublicPage(slug);
   const cmsPage = cmsQuery.data;
+  const isSoftwareCatalog = productKind === 'SOFTWARE';
 
   return (
     <>
@@ -40,14 +41,25 @@ export function ProductsIndexPage({
                 seoTitle: cmsPage.seoTitle,
                 seoDescription: cmsPage.seoDescription,
               }
-            : undefined,
+            : isSoftwareCatalog
+              ? {
+                  seoTitle: 'Woontegra Yazılımları',
+                  seoDescription:
+                    'İşletmeler için geliştirilen indirilebilir ve web tabanlı yazılım çözümleri.',
+                }
+              : undefined,
           seoSettings,
           siteQuery.data,
         )}
         description={resolveSeoDescription(
           cmsPage
             ? { seoDescription: cmsPage.seoDescription }
-            : undefined,
+            : isSoftwareCatalog
+              ? {
+                  seoDescription:
+                    'Ücretsiz araçlar, lisanslı masaüstü yazılımlar ve SaaS abonelik çözümleri.',
+                }
+              : undefined,
           seoSettings,
           siteQuery.data,
         )}
@@ -61,11 +73,11 @@ export function ProductsIndexPage({
       />
 
       <div className="mx-auto max-w-6xl">
-        <StorefrontPageHeading
-          cmsPage={cmsPage}
-          seoSettings={seoSettings}
-          siteSettings={siteQuery.data}
-        />
+        {isSoftwareCatalog ? (
+          <div className="mb-6">
+            <SoftwareCatalogHero />
+          </div>
+        ) : null}
 
         <ProductListingView productKind={productKind} />
       </div>

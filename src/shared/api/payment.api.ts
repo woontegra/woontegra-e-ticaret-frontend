@@ -29,6 +29,27 @@ export function listPublicPaymentMethods() {
   });
 }
 
+export function startPaytrPayment(orderNumber: string, email: string) {
+  return apiClient<{
+    iframeToken: string;
+    redirectUrl: string;
+    merchantOid: string;
+    callbackUrl: string;
+  }>('/api/public/payments/paytr/start', {
+    auth: false,
+    method: 'POST',
+    body: { orderNumber, email },
+  });
+}
+
+export const PAYMENT_TRANSACTION_STATUS_LABELS = {
+  PENDING: 'Bekliyor',
+  PROCESSING: 'İşleniyor',
+  SUCCESS: 'Başarılı',
+  FAILED: 'Başarısız',
+  CANCELLED: 'İptal',
+} as const;
+
 export const PAYMENT_METHOD_TYPE_LABELS = {
   BANK_TRANSFER: 'Havale / EFT',
   CASH_ON_DELIVERY: 'Kapıda ödeme',

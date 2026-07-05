@@ -62,7 +62,7 @@ export function PublicLayout() {
         className={
           isHomePage
             ? 'w-full flex-1'
-            : 'theme-container theme-container-padding mx-auto w-full flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8'
+            : 'theme-container theme-container-padding mx-auto w-full flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8'
         }
       >
         <Outlet context={{ siteSettings: siteQuery.data, companySettings: companyQuery.data }} />

@@ -23,13 +23,13 @@ export function buildDownloadContactUrl(productName: string): string {
 export function getDeliveryModeBadge(deliveryMode: DeliveryMode): string | null {
   switch (deliveryMode) {
     case 'FREE_DOWNLOAD':
-      return 'Ücretsiz';
+      return 'Ücretsiz araç';
     case 'PAID_DOWNLOAD':
       return 'İndirilebilir';
     case 'LICENSED_DOWNLOAD':
-      return 'Lisanslı';
+      return 'Lisanslı masaüstü';
     case 'SAAS':
-      return 'SaaS';
+      return 'SaaS abonelik';
     case 'QUOTE_ONLY':
       return 'Teklif';
     default:

@@ -17,6 +17,7 @@ import { useStorefrontUi } from '@/storefront/hooks/useStorefrontUi';
 import { useCart } from '@/storefront/hooks/useCart';
 import { ApiError } from '@/shared/api/client';
 import { useState } from 'react';
+import { ProductImageFallback } from '@/storefront/components/media/ImageFallback';
 
 interface ProductCardProps {
   product: PublicProductDto;
@@ -83,26 +84,34 @@ export function ProductCard({
   return (
     <article
       className={cn(
-        'theme-product-card theme-card overflow-hidden transition hover:opacity-95',
+        'group theme-product-card theme-card overflow-hidden rounded-xl border border-theme-border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md',
         isList && 'flex flex-col sm:flex-row',
       )}
     >
       <Link
         to={href}
-        className={cn('block shrink-0', isList && 'sm:w-48 lg:w-56')}
+        className={cn('relative block shrink-0 overflow-hidden', isList && 'sm:w-48 lg:w-56')}
       >
         {product.imageUrl ? (
           <LazyImage
             src={product.imageUrl}
             alt={product.name}
-            className="theme-product-card-image w-full object-cover"
+            className="theme-product-card-image w-full object-cover transition duration-300 group-hover:scale-[1.02]"
           />
         ) : (
-          <div className="theme-product-card-image w-full bg-slate-100" />
+          <ProductImageFallback
+            title={product.name}
+            deliveryMode={product.deliveryMode}
+          />
         )}
+        {showDeliveryBadge && deliveryBadge ? (
+          <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-slate-800 shadow-sm ring-1 ring-black/5">
+            {deliveryBadge}
+          </span>
+        ) : null}
       </Link>
 
-      <div className={cn('flex flex-1 flex-col p-4', isList && 'justify-center')}>
+      <div className={cn('flex flex-1 flex-col p-4 sm:p-5', isList && 'justify-center')}>
         <div className="mb-2 flex flex-wrap gap-1">
           {showBadges ? (
             <>
@@ -115,19 +124,16 @@ export function ProductCard({
               ) : null}
             </>
           ) : null}
-          {showDeliveryBadge && deliveryBadge ? (
-            <Badge>{deliveryBadge}</Badge>
-          ) : null}
         </div>
 
         <Link to={href}>
-          <h2 className="theme-product-card-title theme-heading group-hover:underline">
+          <h2 className="theme-product-card-title theme-heading text-base font-semibold group-hover:underline sm:text-lg">
             {product.name}
           </h2>
         </Link>
 
         {product.shortDescription ? (
-          <p className="mt-1 line-clamp-2 text-sm text-theme-muted">
+          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-theme-muted">
             {product.shortDescription}
           </p>
         ) : null}
@@ -137,12 +143,12 @@ export function ProductCard({
         ) : null}
 
         {priceLabel ? (
-          <p className="theme-product-card-price mt-2 text-sm font-medium">
+          <p className="theme-product-card-price mt-3 text-base font-semibold text-theme-text">
             {priceLabel}
           </p>
         ) : null}
 
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
           {action.type !== 'none' && action.label ? (
             <Button
               type="button"
@@ -156,7 +162,7 @@ export function ProductCard({
           {actionDetail ? (
             <Link
               to={href}
-              className="theme-btn-secondary inline-block rounded-md border border-slate-200 px-3 py-1.5 text-xs"
+              className="theme-btn-secondary inline-block rounded-md border border-theme-border px-3 py-1.5 text-xs font-medium text-theme-muted transition hover:text-theme-text"
             >
               {actionDetail}
             </Link>

@@ -14,6 +14,7 @@ import { CartPage } from '@/storefront/pages/CartPage';
 import { CheckoutPage } from '@/storefront/pages/CheckoutPage';
 import { CustomerLoginPage } from '@/storefront/pages/CustomerLoginPage';
 import { OrderSuccessPage } from '@/storefront/pages/OrderSuccessPage';
+import { PaymentFailedPage } from '@/storefront/pages/PaymentFailedPage';
 import { OrderTrackingPage } from '@/storefront/pages/OrderTrackingPage';
 import { SearchPage } from '@/storefront/pages/SearchPage';
 import { NotFoundPage } from '@/storefront/pages/NotFoundPage';
@@ -36,6 +37,15 @@ export default function App() {
           element={<ProductsIndexPage productKind="SOFTWARE" />}
         />
         <Route
+          path="yazilimlar/muvekkil-kasa-defteri-saas"
+          element={
+            <Navigate
+              to="/yazilimlar/muvekkil-kasa-defteri-web-tabanli"
+              replace
+            />
+          }
+        />
+        <Route
           path="yazilimlar/:slug"
           element={<ProductDetailPage productKind="SOFTWARE" />}
         />
@@ -49,6 +59,11 @@ export default function App() {
         <Route path="sepet" element={<CartPage />} />
         <Route path="giris" element={<CustomerLoginPage />} />
         <Route path="odeme" element={<CheckoutPage />} />
+        <Route path="odeme-basarisiz" element={<PaymentFailedPage />} />
+        <Route
+          path="odeme-basarisiz/:orderNumber"
+          element={<PaymentFailedPage />}
+        />
         <Route
           path="siparis-basarili/:orderNumber"
           element={<OrderSuccessPage />}

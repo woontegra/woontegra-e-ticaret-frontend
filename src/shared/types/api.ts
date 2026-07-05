@@ -1104,6 +1104,9 @@ export interface PaytrConfig {
   merchantSalt: string;
   hasMerchantKey?: boolean;
   hasMerchantSalt?: boolean;
+  successUrl?: string | null;
+  failUrl?: string | null;
+  callbackUrl?: string | null;
 }
 
 export interface IyzicoConfig {
@@ -1389,6 +1392,25 @@ export interface OrderItemDto {
   total: number;
 }
 
+export type PaymentTransactionStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'SUCCESS'
+  | 'FAILED'
+  | 'CANCELLED';
+
+export interface PaymentTransactionDto {
+  id: string;
+  orderId: string;
+  provider: PaymentMethodType;
+  status: PaymentTransactionStatus;
+  amount: number;
+  currency: string;
+  providerReference: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface OrderDto {
   id: string;
   orderNumber: string;
@@ -1411,6 +1433,7 @@ export interface OrderDto {
   paymentMethodName: string | null;
   shipment: ShipmentDto | null;
   items: OrderItemDto[];
+  paymentTransactions?: PaymentTransactionDto[];
   createdAt: string;
   updatedAt: string;
   digitalDelivery?: OrderDigitalDeliveryItemDto[];
