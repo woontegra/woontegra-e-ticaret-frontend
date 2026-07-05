@@ -12,6 +12,7 @@ import { CategoryDetailPage } from '@/storefront/pages/CategoryDetailPage';
 import { BrandDetailPage } from '@/storefront/pages/BrandDetailPage';
 import { CartPage } from '@/storefront/pages/CartPage';
 import { CheckoutPage } from '@/storefront/pages/CheckoutPage';
+import { CustomerLoginPage } from '@/storefront/pages/CustomerLoginPage';
 import { OrderSuccessPage } from '@/storefront/pages/OrderSuccessPage';
 import { OrderTrackingPage } from '@/storefront/pages/OrderTrackingPage';
 import { SearchPage } from '@/storefront/pages/SearchPage';
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="kategori/:slug" element={<CategoryDetailPage />} />
         <Route path="marka/:slug" element={<BrandDetailPage />} />
         <Route path="sepet" element={<CartPage />} />
+        <Route path="giris" element={<CustomerLoginPage />} />
         <Route path="odeme" element={<CheckoutPage />} />
         <Route
           path="siparis-basarili/:orderNumber"

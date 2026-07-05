@@ -6,6 +6,7 @@ import {
   formatMoney,
   getPublicOrder,
   getPublicOrderDownloads,
+  getPublicOrderSaasMemberships,
   ORDER_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
 } from '@/shared/api/cart.api';
@@ -87,6 +88,24 @@ export function OrderSuccessPage() {
 
   const downloadLinks =
     order?.fulfillment?.downloadLinks ?? downloadsQuery.data?.links ?? [];
+
+  const saasMembershipsQuery = useQuery({
+    queryKey: ['public', 'orders', orderNumber, lookupEmail, 'saas'],
+    queryFn: () => getPublicOrderSaasMemberships(orderNumber!, lookupEmail),
+    enabled:
+      Boolean(orderNumber) &&
+      Boolean(lookupEmail) &&
+      order?.paymentStatus === 'PAID',
+    retry: false,
+  });
+
+  const saasMemberships =
+    order?.fulfillment?.saasMemberships ??
+    saasMembershipsQuery.data?.memberships ??
+    [];
+  const hasSaasProducts =
+    saasMemberships.length > 0 ||
+    (order?.fulfillment?.deliveryModes ?? []).includes('SAAS');
   if (!order && orderQuery.isPending) {
     return (
       <div className="mx-auto max-w-2xl animate-pulse space-y-4 py-16">
@@ -216,6 +235,64 @@ export function OrderSuccessPage() {
             {fulfillmentMessages.map((message) => (
               <p key={message}>{message}</p>
             ))}
+          </div>
+        ) : null}
+
+        {hasSaasProducts && order.paymentStatus === 'WAITING_BANK_TRANSFER' ? (
+          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-900">
+            Ödemeniz onaylandıktan sonra SaaS hesabınız oluşturulacaktır.
+          </div>
+        ) : null}
+
+        {hasSaasProducts &&
+        order.paymentStatus === 'PAID' &&
+        saasMemberships.length > 0 ? (
+          <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 text-left text-sm">
+            <h2 className="font-semibold text-slate-800">SaaS hesabınız</h2>
+            <p className="mt-2 text-slate-600">
+              Giriş bilgileriniz e-posta adresinize gönderildi.
+            </p>
+            <ul className="mt-3 space-y-3">
+              {saasMemberships.map((membership, index) => (
+                <li
+                  key={`${membership.productName}-${index}`}
+                  className="rounded-md border border-slate-100 bg-slate-50 p-3"
+                >
+                  <p className="font-medium text-slate-900">
+                    {membership.productName}
+                  </p>
+                  {membership.loginUrl ? (
+                    <a
+                      href={membership.loginUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-block text-sm font-medium text-slate-900 underline"
+                    >
+                      SaaS uygulamasına giriş yap
+                    </a>
+                  ) : null}
+                  {membership.loginEmail ? (
+                    <p className="mt-1 text-slate-600">
+                      Giriş e-postası: {membership.loginEmail}
+                    </p>
+                  ) : null}
+                  {membership.startsAt || membership.endsAt ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      {membership.startsAt
+                        ? `Başlangıç: ${new Date(membership.startsAt).toLocaleDateString('tr-TR')}`
+                        : null}
+                      {membership.startsAt && membership.endsAt ? ' · ' : null}
+                      {membership.endsAt
+                        ? `Bitiş: ${new Date(membership.endsAt).toLocaleDateString('tr-TR')}`
+                        : null}
+                    </p>
+                  ) : null}
+                  {membership.note ? (
+                    <p className="mt-1 text-slate-600">{membership.note}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
           </div>
         ) : null}
 

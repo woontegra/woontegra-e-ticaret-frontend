@@ -134,7 +134,23 @@ function computeWarnings(form: Partial<ProductDto>): string[] {
     form.deliveryMode === 'LICENSED_DOWNLOAD' &&
     !form.licenseAppCode?.trim()
   ) {
-    warnings.push('Merkezi lisans için uygulama kodu gerekli');
+    warnings.push('Merkezi lisans için uygulama kodu (licenseAppCode) gerekli');
+  }
+  if (form.deliveryMode === 'LICENSED_DOWNLOAD' && !form.licenseRequired) {
+    warnings.push('Lisanslı indirme için licenseRequired etkin olmalı');
+  }
+  if (
+    form.deliveryMode === 'LICENSED_DOWNLOAD' &&
+    !form.licenseDays &&
+    !form.licenseMonths
+  ) {
+    warnings.push('Lisans süresi için licenseDays veya licenseMonths gerekli');
+  }
+  if (
+    form.deliveryMode === 'LICENSED_DOWNLOAD' &&
+    (!form.licenseMaxDevices || form.licenseMaxDevices < 1)
+  ) {
+    warnings.push('licenseMaxDevices en az 1 olmalı');
   }
   if (
     (form.deliveryMode === 'PAID_DOWNLOAD' ||
@@ -145,7 +161,23 @@ function computeWarnings(form: Partial<ProductDto>): string[] {
     warnings.push('İndirme dosyası URL tanımlanmadı (R2 fazında tamamlanacak)');
   }
   if (form.deliveryMode === 'SAAS' && !form.saasAppCode?.trim()) {
-    warnings.push('SaaS uygulama kodu önerilir');
+    warnings.push('SaaS uygulama kodu (saasAppCode) gerekli');
+  }
+  if (form.deliveryMode === 'SAAS' && !form.saasPlanCode?.trim()) {
+    warnings.push('SaaS plan kodu (saasPlanCode) önerilir');
+  }
+  if (form.deliveryMode === 'SAAS' && !form.saasRequiresLogin) {
+    warnings.push('SaaS ürünlerde saasRequiresLogin etkin olması önerilir');
+  }
+  if (
+    form.deliveryMode === 'SAAS' &&
+    !form.licenseMonths &&
+    !form.saasTrialDays
+  ) {
+    warnings.push('Abonelik süresi için licenseMonths veya saasTrialDays tanımlayın');
+  }
+  if (form.deliveryMode === 'SAAS' && !form.purchaseEnabled) {
+    warnings.push('SaaS ürünlerde purchaseEnabled etkin olmalı');
   }
   if (!form.mainImageId) warnings.push('Kapak görseli önerilir');
   return warnings;

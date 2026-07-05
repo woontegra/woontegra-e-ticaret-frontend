@@ -5,8 +5,10 @@ import type {
   OrderDto,
   OrderListResult,
   PublicOrderDto,
+  PublicSaasMembershipDto,
 } from '@/shared/types/api';
 import { apiClient } from './client';
+import { useCustomerAuthStore } from '@/shared/auth/customerAuth.store';
 
 const cartRequest = { auth: false, withCredentials: true } as const;
 
@@ -57,10 +59,13 @@ export function removeCartCoupon() {
 }
 
 export function checkout(payload: CheckoutInput) {
+  const customerToken = useCustomerAuthStore.getState().accessToken;
   return apiClient<CheckoutResultDto>('/api/public/checkout', {
     ...cartRequest,
+    auth: false,
     method: 'POST',
     body: payload,
+    headers: customerToken ? { Authorization: `Bearer ${customerToken}` } : undefined,
   });
 }
 
@@ -78,6 +83,14 @@ export function getPublicOrderDownloads(orderNumber: string, email: string) {
   const query = new URLSearchParams({ email });
   return apiClient<{ links: import('@/shared/types/api').PublicDownloadLinkDto[] }>(
     `/api/public/orders/${encodeURIComponent(orderNumber)}/downloads?${query.toString()}`,
+    { auth: false },
+  );
+}
+
+export function getPublicOrderSaasMemberships(orderNumber: string, email: string) {
+  const query = new URLSearchParams({ email });
+  return apiClient<{ memberships: PublicSaasMembershipDto[] }>(
+    `/api/public/orders/${encodeURIComponent(orderNumber)}/saas-memberships?${query.toString()}`,
     { auth: false },
   );
 }

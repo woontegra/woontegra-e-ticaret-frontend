@@ -64,6 +64,7 @@ export const adminNavigation: AdminNavGroup[] = [
     label: 'Operasyon',
     items: [
       { label: 'Siparişler', path: '/admin/orders', icon: ShoppingCart, roles: ['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF'] },
+      { label: 'SaaS Üyelikleri', path: '/admin/saas-memberships', icon: Layers, roles: ['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF'] },
       { label: 'Kargo', path: '/admin/shipping', icon: Truck, roles: ['SUPER_ADMIN', 'ADMIN', 'EDITOR'] },
       { label: 'Yorumlar', path: '/admin/reviews', icon: MessageSquare, roles: ['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF'] },
       { label: 'İletişim', path: '/admin/contact', icon: Mail, roles: ['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF'] },

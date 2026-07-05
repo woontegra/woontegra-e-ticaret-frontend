@@ -67,12 +67,11 @@ export function ProductDeliveryTab({
         {deliveryMode === 'LICENSED_DOWNLOAD' ? (
           <FormSection
             title="Merkezi lisans"
-            description="Woontegra Lisans Server entegrasyonu sonraki fazda aktif olacak"
+            description="Ödeme sonrası Woontegra Lisans Server üzerinden otomatik lisans oluşturulur"
           >
-            <div className="mb-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
-              Lisans sunucusu bağlantısı henüz kurulmadı. Alanları şimdiden
-              tanımlayabilirsiniz; ödeme sonrası otomatik lisans üretimi ileriki
-              fazda devreye alınacak.
+            <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+              LICENSE_SERVER_URL ve LICENSE_SERVER_INTEGRATION_SECRET yapılandırıldığında
+              ödeme onayı sonrası lisans otomatik üretilir.
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="flex items-center gap-2 text-sm sm:col-span-2">

@@ -92,6 +92,20 @@ export function retryOrderDigitalDelivery(id: string) {
   });
 }
 
+export function retryOrderItemLicense(orderId: string, orderItemId: string) {
+  return apiClient<OrderDto>(
+    `/api/admin/orders/${orderId}/items/${orderItemId}/retry-license`,
+    { method: 'POST' },
+  );
+}
+
+export function retryOrderItemSaasProvision(orderId: string, orderItemId: string) {
+  return apiClient<OrderDto>(
+    `/api/admin/orders/${orderId}/items/${orderItemId}/retry-saas-provision`,
+    { method: 'POST' },
+  );
+}
+
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING: 'Beklemede',
   CONFIRMED: 'Onaylandı',

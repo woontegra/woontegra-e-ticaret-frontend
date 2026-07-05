@@ -9,6 +9,7 @@ import {
   PAYMENT_METHOD_TYPE_LABELS,
 } from '@/shared/api/payment.api';
 import { useCart } from '@/storefront/hooks/useCart';
+import { useCustomerAuthStore } from '@/shared/auth/customerAuth.store';
 import { SeoHead } from '@/storefront/components/SeoHead';
 import { StorefrontPageHeading } from '@/storefront/components/StorefrontPageHeading';
 import { useOptionalPublicPage } from '@/storefront/hooks/useOptionalPublicPage';
@@ -64,6 +65,9 @@ export function CheckoutPage() {
   const cartBackLink = uiLabel(ui, 'cartBackLink');
   const { cart, isLoading, invalidate, applyCouponMutation, removeCouponMutation } =
     useCart();
+  const customer = useCustomerAuthStore((state) => state.customer);
+  const isCustomerLoggedIn = useCustomerAuthStore((state) => state.isAuthenticated());
+  const requiresLogin = Boolean(cart?.requiresCustomerLogin);
   const [couponCode, setCouponCode] = useState('');
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
 
@@ -91,6 +95,17 @@ export function CheckoutPage() {
       }));
     }
   }, [activeMethods, form.paymentMethodId]);
+
+  useEffect(() => {
+    if (customer) {
+      setForm((prev) => ({
+        ...prev,
+        customerName: prev.customerName || customer.name,
+        customerEmail: prev.customerEmail || customer.email,
+        customerPhone: prev.customerPhone || customer.phone || '',
+      }));
+    }
+  }, [customer]);
 
   const selectedMethod = useMemo(
     () => activeMethods.find((m) => m.id === form.paymentMethodId),
@@ -129,6 +144,12 @@ export function CheckoutPage() {
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
+    if (requiresLogin && !isCustomerLoggedIn) {
+      setErrorMessage(
+        'SaaS aboneliği satın almak için hesabınıza giriş yapmanız gerekir.',
+      );
+      return;
+    }
     if (!form.paymentMethodId) {
       setErrorMessage(uiLabel(ui, 'checkoutPaymentRequired') ?? null);
       return;
@@ -199,6 +220,29 @@ export function CheckoutPage() {
           seoSettings={seoSettings}
           siteSettings={siteQuery.data}
         />
+
+        {requiresLogin && !isCustomerLoggedIn ? (
+          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <p>
+              SaaS aboneliği satın almak için hesabınıza giriş yapmanız gerekir.
+            </p>
+            <Link
+              to="/giris"
+              state={{ returnTo: '/odeme' }}
+              className="mt-2 inline-block font-medium underline"
+            >
+              Giriş yapın veya hesap oluşturun
+            </Link>
+          </div>
+        ) : null}
+
+        {requiresLogin && isCustomerLoggedIn && customer ? (
+          <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+            <p>
+              {customer.name} ({customer.email}) olarak giriş yaptınız.
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_300px]">
           <form className="space-y-6" onSubmit={handleSubmit}>
@@ -378,7 +422,9 @@ export function CheckoutPage() {
             <Button
               type="submit"
               disabled={
-                checkoutMutation.isPending || activeMethods.length === 0
+                checkoutMutation.isPending ||
+                activeMethods.length === 0 ||
+                (requiresLogin && !isCustomerLoggedIn)
               }
             >
               {checkoutMutation.isPending

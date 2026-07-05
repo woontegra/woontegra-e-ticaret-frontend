@@ -9,12 +9,15 @@ import {
   SHIPPING_STATUS_LABELS,
   orderStatusBadgeVariant,
   retryOrderDigitalDelivery,
+  retryOrderItemLicense,
+  retryOrderItemSaasProvision,
   updateOrderAdminNote,
   updateOrderPaymentStatus,
   updateOrderShipment,
   updateOrderShippingStatus,
   updateOrderStatus,
 } from '@/shared/api/orders.api';
+import { SAAS_PROVISION_STATUS_LABELS } from '@/shared/api/saas.api';
 import { listActiveShippingCarriers } from '@/shared/api/shipping.api';
 import {
   Badge,
@@ -98,13 +101,27 @@ export function OrderDetailPanel({ order, onUpdated }: OrderDetailPanelProps) {
     onSuccess: invalidate,
   });
 
+  const licenseRetryMutation = useMutation({
+    mutationFn: (orderItemId: string) =>
+      retryOrderItemLicense(order.id, orderItemId),
+    onSuccess: invalidate,
+  });
+
+  const saasRetryMutation = useMutation({
+    mutationFn: (orderItemId: string) =>
+      retryOrderItemSaasProvision(order.id, orderItemId),
+    onSuccess: invalidate,
+  });
+
   const isSaving =
     statusMutation.isPending ||
     paymentMutation.isPending ||
     shippingMutation.isPending ||
     noteMutation.isPending ||
     shipmentMutation.isPending ||
-    digitalDeliveryMutation.isPending;
+    digitalDeliveryMutation.isPending ||
+    licenseRetryMutation.isPending ||
+    saasRetryMutation.isPending;
 
   const mutationError =
     (statusMutation.error ??
@@ -112,22 +129,37 @@ export function OrderDetailPanel({ order, onUpdated }: OrderDetailPanelProps) {
       shippingMutation.error ??
       noteMutation.error ??
       shipmentMutation.error ??
-      digitalDeliveryMutation.error) instanceof ApiError
+          digitalDeliveryMutation.error ??
+          licenseRetryMutation.error ??
+          saasRetryMutation.error) instanceof ApiError
       ? (statusMutation.error ??
           paymentMutation.error ??
           shippingMutation.error ??
           noteMutation.error ??
           shipmentMutation.error ??
-          digitalDeliveryMutation.error as ApiError).message
+          digitalDeliveryMutation.error ??
+          licenseRetryMutation.error as ApiError).message
       : null;
 
   const digitalDeliveryItems = order.digitalDelivery ?? [];
+  const licenseDeliveryItems = order.licenseDelivery ?? [];
+  const saasDeliveryItems = order.saasDelivery ?? [];
+  const [revealedPasswords, setRevealedPasswords] = useState<
+    Record<string, boolean>
+  >({});
 
   const DELIVERY_STATUS_LABELS: Record<string, string> = {
     PENDING: 'Bekliyor',
     READY: 'Hazır',
     SENT: 'Gönderildi',
     FAILED: 'Başarısız',
+  };
+
+  const LICENSE_STATUS_LABELS: Record<string, string> = {
+    PENDING: 'Bekliyor',
+    CREATED: 'Oluşturuldu',
+    FAILED: 'Başarısız',
+    SKIPPED: 'Atlandı',
   };
 
   return (
@@ -310,6 +342,227 @@ export function OrderDetailPanel({ order, onUpdated }: OrderDetailPanelProps) {
           >
             Dijital Teslimatı Yeniden Dene
           </Button>
+        </section>
+      ) : null}
+
+      {licenseDeliveryItems.length > 0 ? (
+        <section>
+          <h3 className="text-sm font-semibold text-slate-800">
+            Merkezi lisans
+          </h3>
+          {order.paymentStatus !== 'PAID' ? (
+            <p className="mt-2 text-sm text-amber-700">
+              Ödeme tamamlanmadan lisans oluşturulmaz.
+            </p>
+          ) : null}
+          <div className="mt-3 space-y-3">
+            {licenseDeliveryItems.map((item) => {
+              const showPassword = revealedPasswords[item.orderItemId];
+
+              return (
+                <div
+                  key={item.orderItemId}
+                  className="rounded-lg border border-slate-200 p-3 text-sm"
+                >
+                  <p className="font-medium text-slate-900">{item.productName}</p>
+                  <p className="text-slate-500">
+                    Uygulama kodu: {item.licenseAppCode ?? '—'}
+                  </p>
+                  <p className="text-slate-600">
+                    Durum:{' '}
+                    {item.licenseServerStatus
+                      ? LICENSE_STATUS_LABELS[item.licenseServerStatus] ??
+                        item.licenseServerStatus
+                      : '—'}
+                  </p>
+                  <p className="text-slate-600">
+                    Birim: {item.licenseServerUnitsNotified}/{item.quantity}
+                  </p>
+                  {item.licenseServerLicenseKey ? (
+                    <p className="mt-1 font-mono text-xs text-slate-800">
+                      Lisans: {item.licenseServerLicenseKey}
+                    </p>
+                  ) : null}
+                  {item.licenseServerActivationPassword ? (
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <p className="font-mono text-xs text-slate-800">
+                        Aktivasyon:{' '}
+                        {showPassword
+                          ? item.licenseServerActivationPassword
+                          : '••••••••'}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        type="button"
+                        onClick={() =>
+                          setRevealedPasswords((prev) => ({
+                            ...prev,
+                            [item.orderItemId]: !prev[item.orderItemId],
+                          }))
+                        }
+                      >
+                        {showPassword ? 'Gizle' : 'Göster'}
+                      </Button>
+                    </div>
+                  ) : null}
+                  {item.licenseServerExpiresAt ? (
+                    <p className="text-slate-600">
+                      Bitiş:{' '}
+                      {new Date(item.licenseServerExpiresAt).toLocaleDateString(
+                        'tr-TR',
+                      )}
+                    </p>
+                  ) : null}
+                  {item.licenseServerLastError ? (
+                    <p className="mt-1 text-red-600">
+                      {item.licenseServerLastError}
+                    </p>
+                  ) : null}
+                  {item.canRetry ? (
+                    <Button
+                      size="sm"
+                      className="mt-2"
+                      disabled={licenseRetryMutation.isPending}
+                      onClick={() =>
+                        licenseRetryMutation.mutate(item.orderItemId)
+                      }
+                    >
+                      Lisans Oluşturmayı Yeniden Dene
+                    </Button>
+                  ) : null}
+                  {item.licenseServerStatus === 'CREATED' ? (
+                    <p className="mt-2 text-xs text-slate-500">
+                      Lisans oluşturuldu; yeniden üretim desteklenmiyor.
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {saasDeliveryItems.length > 0 ? (
+        <section>
+          <h3 className="text-sm font-semibold text-slate-800">
+            SaaS provisioning
+          </h3>
+          {order.paymentStatus !== 'PAID' ? (
+            <p className="mt-2 text-sm text-amber-700">
+              Ödeme tamamlanmadan SaaS hesabı oluşturulmaz.
+            </p>
+          ) : null}
+          <div className="mt-3 space-y-3">
+            {saasDeliveryItems.map((item) => {
+              const showPassword = revealedPasswords[`saas-${item.orderItemId}`];
+
+              return (
+                <div
+                  key={item.orderItemId}
+                  className="rounded-lg border border-slate-200 p-3 text-sm"
+                >
+                  <p className="font-medium text-slate-900">{item.productName}</p>
+                  <p className="text-slate-500">
+                    Uygulama: {item.saasAppCode ?? '—'}
+                    {item.saasPlanCode ? ` · Plan: ${item.saasPlanCode}` : ''}
+                  </p>
+                  <p className="text-slate-600">
+                    Durum:{' '}
+                    {item.saasProvisionStatus
+                      ? SAAS_PROVISION_STATUS_LABELS[item.saasProvisionStatus] ??
+                        item.saasProvisionStatus
+                      : '—'}
+                  </p>
+                  {item.externalTenantId ? (
+                    <p className="text-slate-600">
+                      Tenant ID: {item.externalTenantId}
+                    </p>
+                  ) : null}
+                  {item.externalTenantSlug ? (
+                    <p className="text-slate-600">
+                      Tenant slug: {item.externalTenantSlug}
+                    </p>
+                  ) : null}
+                  {item.loginUrl ? (
+                    <p className="text-slate-600">
+                      Giriş URL:{' '}
+                      <a
+                        href={item.loginUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline"
+                      >
+                        {item.loginUrl}
+                      </a>
+                    </p>
+                  ) : null}
+                  {item.loginEmail ? (
+                    <p className="text-slate-600">E-posta: {item.loginEmail}</p>
+                  ) : null}
+                  {item.temporaryPassword ? (
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <p className="font-mono text-xs text-slate-800">
+                        Geçici şifre:{' '}
+                        {showPassword ? item.temporaryPassword : '••••••••'}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        type="button"
+                        onClick={() =>
+                          setRevealedPasswords((prev) => ({
+                            ...prev,
+                            [`saas-${item.orderItemId}`]: !prev[`saas-${item.orderItemId}`],
+                          }))
+                        }
+                      >
+                        {showPassword ? 'Gizle' : 'Göster'}
+                      </Button>
+                    </div>
+                  ) : null}
+                  {item.externalLicenseKey ? (
+                    <p className="mt-1 font-mono text-xs text-slate-800">
+                      Lisans: {item.externalLicenseKey}
+                    </p>
+                  ) : null}
+                  {item.startsAt || item.endsAt ? (
+                    <p className="text-slate-600">
+                      {item.startsAt
+                        ? `Başlangıç: ${new Date(item.startsAt).toLocaleDateString('tr-TR')}`
+                        : null}
+                      {item.startsAt && item.endsAt ? ' · ' : null}
+                      {item.endsAt
+                        ? `Bitiş: ${new Date(item.endsAt).toLocaleDateString('tr-TR')}`
+                        : null}
+                    </p>
+                  ) : null}
+                  {item.saasProvisionLastError ? (
+                    <p className="mt-1 text-red-600">
+                      {item.saasProvisionLastError}
+                    </p>
+                  ) : null}
+                  {item.canRetry ? (
+                    <Button
+                      size="sm"
+                      className="mt-2"
+                      disabled={saasRetryMutation.isPending}
+                      onClick={() =>
+                        saasRetryMutation.mutate(item.orderItemId)
+                      }
+                    >
+                      SaaS Oluşturmayı Yeniden Dene
+                    </Button>
+                  ) : null}
+                  {item.saasProvisionStatus === 'CREATED' ? (
+                    <p className="mt-2 text-xs text-slate-500">
+                      SaaS hesabı oluşturuldu; yeniden üretim desteklenmiyor.
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         </section>
       ) : null}
 

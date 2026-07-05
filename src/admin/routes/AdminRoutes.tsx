@@ -52,6 +52,7 @@ import { UsersPage } from '@/admin/pages/UsersPage';
 import { NotificationsPage } from '@/admin/pages/NotificationsPage';
 import { AuditLogsPage } from '@/admin/pages/AuditLogsPage';
 import { ReportsPage } from '@/admin/pages/ReportsPage';
+import { SaasMembershipsListPage } from '@/admin/pages/SaasMembershipsListPage';
 import { ModulePlaceholderPage } from '@/admin/pages/ModulePlaceholderPage';
 
 export function AdminRoutes() {
@@ -217,6 +218,14 @@ export function AdminRoutes() {
           element={
             <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
               <OrderDetailPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="saas-memberships"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
+              <SaasMembershipsListPage />
             </RequireRole>
           }
         />
