@@ -18,11 +18,9 @@ interface UserFormModalProps {
 }
 
 const emptyForm = {
-  username: '',
+  name: '',
   email: '',
   password: '',
-  firstName: '',
-  lastName: '',
   role: 'STAFF' as UserRole,
   isActive: true,
 };
@@ -42,11 +40,9 @@ export function UserFormModal({
 
     if (user) {
       setForm({
-        username: user.username,
+        name: user.name,
         email: user.email,
         password: '',
-        firstName: user.firstName ?? '',
-        lastName: user.lastName ?? '',
         role: user.role as UserRole,
         isActive: user.isActive ?? true,
       });
@@ -62,10 +58,8 @@ export function UserFormModal({
     event.preventDefault();
 
     const payload: Record<string, unknown> = {
-      username: form.username,
+      name: form.name,
       email: form.email,
-      firstName: form.firstName || undefined,
-      lastName: form.lastName || undefined,
       role: form.role,
       isActive: form.isActive,
     };
@@ -88,45 +82,40 @@ export function UserFormModal({
           <Button variant="secondary" onClick={onClose}>
             İptal
           </Button>
-          <Button
-            type="submit"
-            form="user-form"
-            isLoading={isLoading}
-          >
+          <Button type="submit" form="user-form" isLoading={isLoading}>
             {user ? 'Kaydet' : 'Oluştur'}
           </Button>
         </>
       }
     >
       <form id="user-form" onSubmit={handleSubmit} className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="username" required>
-              Kullanıcı adı
-            </Label>
-            <Input
-              id="username"
-              value={form.username}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, username: event.target.value }))
-              }
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="email" required>
-              E-posta
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              value={form.email}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, email: event.target.value }))
-              }
-              required
-            />
-          </div>
+        <div>
+          <Label htmlFor="name" required>
+            Ad
+          </Label>
+          <Input
+            id="name"
+            value={form.name}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, name: event.target.value }))
+            }
+            required
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="email" required>
+            E-posta
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            value={form.email}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, email: event.target.value }))
+            }
+            required
+          />
         </div>
 
         <div>
@@ -143,29 +132,6 @@ export function UserFormModal({
             placeholder={user ? 'Değiştirmek için doldurun' : ''}
             required={!user}
           />
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="firstName">Ad</Label>
-            <Input
-              id="firstName"
-              value={form.firstName}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, firstName: event.target.value }))
-              }
-            />
-          </div>
-          <div>
-            <Label htmlFor="lastName">Soyad</Label>
-            <Input
-              id="lastName"
-              value={form.lastName}
-              onChange={(event) =>
-                setForm((prev) => ({ ...prev, lastName: event.target.value }))
-              }
-            />
-          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

@@ -4,6 +4,7 @@ import { PublicHeader } from '@/storefront/components/PublicHeader';
 import { SeoHead } from '@/storefront/components/SeoHead';
 import {
   usePublicCompanySettings,
+  usePublicSeoSettings,
   usePublicSiteSettings,
 } from '@/storefront/hooks/usePublicSettings';
 import { usePublicFooter } from '@/storefront/hooks/usePublicFooter';
@@ -18,6 +19,7 @@ export function PublicLayout() {
   const isHomePage = location.pathname === '/';
 
   const siteQuery = usePublicSiteSettings();
+  const seoQuery = usePublicSeoSettings();
   const companyQuery = usePublicCompanySettings();
   const menusQuery = usePublicMenus();
   const footerQuery = usePublicFooter();
@@ -28,7 +30,7 @@ export function PublicLayout() {
   if (siteQuery.data?.maintenanceMode) {
     return (
       <>
-        <SeoHead siteSettings={siteQuery.data} />
+        <SeoHead siteSettings={siteQuery.data} seoSettings={seoQuery.data} />
         <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
           <div className="max-w-md text-center">
             {siteQuery.data.siteName ? (
@@ -49,7 +51,7 @@ export function PublicLayout() {
 
   return (
     <ThemeProvider theme={themeQuery.data}>
-      <SeoHead siteSettings={siteQuery.data} />
+      <SeoHead siteSettings={siteQuery.data} seoSettings={seoQuery.data} />
       <PublicHeader
         siteSettings={siteQuery.data}
         menus={menusQuery.data}

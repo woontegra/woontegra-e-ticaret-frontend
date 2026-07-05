@@ -3,6 +3,7 @@ import { BlogGridBlock } from './components/BlogGridBlock';
 import { BrandLogosBlock } from './components/BrandLogosBlock';
 import { CategoryGridBlock } from './components/CategoryGridBlock';
 import { ContactFormBlock } from './components/ContactFormBlock';
+import { CampaignBlock } from './components/CampaignBlock';
 import { FaqBlock } from './components/FaqBlock';
 import { HeroBlock } from './components/HeroBlock';
 import { HeroSliderBlock } from './components/HeroSliderBlock';
@@ -42,6 +43,8 @@ export function BlockRenderer({ block }: { block: PublicPageBlockDto }) {
       return <FaqBlock block={block} />;
     case 'CONTACT_FORM':
       return <ContactFormBlock block={block} />;
+    case 'CAMPAIGN':
+      return <CampaignBlock block={block} />;
     case 'BRAND_LOGOS':
       return <BrandLogosBlock block={block} />;
     case 'TESTIMONIALS':

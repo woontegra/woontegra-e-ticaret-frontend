@@ -1,13 +1,21 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getPublicBrand } from '@/shared/api/products.api';
 import { ProductListingView } from '@/storefront/components/catalog/ProductListingView';
 import { SeoHead } from '@/storefront/components/SeoHead';
+import { usePageSeo } from '@/storefront/hooks/usePageSeo';
+import {
+  buildCanonicalUrl,
+  resolveSeoDescription,
+  resolveSeoTitle,
+} from '@/shared/lib/seo-meta';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
 
 export function BrandDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
   const siteQuery = usePublicSiteSettings();
+  const { seoSettings } = usePageSeo();
 
   const brandQuery = useQuery({
     queryKey: ['public', 'brands', slug],
@@ -41,13 +49,23 @@ export function BrandDetailPage() {
     <>
       <SeoHead
         siteSettings={siteQuery.data}
-        title={
-          brand.seoTitle ||
-          (siteQuery.data?.siteName
-            ? `${brand.name} | ${siteQuery.data.siteName}`
-            : brand.name)
-        }
-        description={brand.seoDescription || brand.description || undefined}
+        seoSettings={seoSettings}
+        title={resolveSeoTitle(
+          { seoTitle: brand.seoTitle },
+          seoSettings,
+          siteQuery.data,
+        )}
+        description={resolveSeoDescription(
+          { seoDescription: brand.seoDescription },
+          seoSettings,
+          siteQuery.data,
+        )}
+        canonicalUrl={buildCanonicalUrl(
+          null,
+          location.pathname,
+          seoSettings,
+          siteQuery.data,
+        )}
       />
 
       <div className="mx-auto max-w-6xl">

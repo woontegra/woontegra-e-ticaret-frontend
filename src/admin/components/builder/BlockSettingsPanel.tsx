@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getMedia, isImageMedia } from '@/shared/api/media.api';
+import { listCampaigns } from '@/shared/api/promotions.api';
 import { PAGE_BLOCK_TYPE_LABELS } from '@/shared/api/layouts.api';
 import {
   parseBlockContent,
@@ -123,6 +125,12 @@ export function BlockSettingsPanel({ block, onChange }: BlockSettingsPanelProps)
   const content = parseBlockContent(block.content);
   const settings = parseBlockSettings(block.settings);
   const title = block.title ?? content.headline ?? '';
+
+  const campaignsQuery = useQuery({
+    queryKey: ['admin', 'campaigns'],
+    queryFn: listCampaigns,
+    enabled: block.type === 'CAMPAIGN',
+  });
 
   return (
     <div className="space-y-6 p-4">
@@ -287,6 +295,46 @@ export function BlockSettingsPanel({ block, onChange }: BlockSettingsPanelProps)
               }
               placeholder="2rem"
             />
+          </div>
+        ) : null}
+
+        {block.type === 'CAMPAIGN' ? (
+          <div>
+            <Label htmlFor="block-campaign-id">Kampanya</Label>
+            <Select
+              id="block-campaign-id"
+              value={content.campaignId ?? ''}
+              onChange={(event) =>
+                updateContent({ campaignId: event.target.value })
+              }
+            >
+              <option value="">Kampanya seçin…</option>
+              {(campaignsQuery.data ?? []).map((campaign) => (
+                <option key={campaign.id} value={campaign.id}>
+                  {campaign.name} ({campaign.title})
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1 text-xs text-slate-500">
+              İçerik ve görsel admin → Kampanyalar bölümünden yönetilir.
+            </p>
+          </div>
+        ) : null}
+
+        {block.type === 'CONTACT_FORM' ? (
+          <div>
+            <Label htmlFor="block-form-key">Form anahtarı</Label>
+            <Input
+              id="block-form-key"
+              value={content.formKey ?? ''}
+              onChange={(event) =>
+                updateContent({ formKey: event.target.value })
+              }
+              placeholder="Boş bırakılırsa standart iletişim formu"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Admin → İletişim → Formlar bölümündeki form anahtarını girin.
+            </p>
           </div>
         ) : null}
       </section>

@@ -1,28 +1,62 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import { formatMoney } from '@/shared/api/cart.api';
 import { getProductPublicPath } from '@/shared/api/products.api';
 import { useCart } from '@/storefront/hooks/useCart';
 import { SeoHead } from '@/storefront/components/SeoHead';
+import { StorefrontPageHeading } from '@/storefront/components/StorefrontPageHeading';
+import { useOptionalPublicPage } from '@/storefront/hooks/useOptionalPublicPage';
+import { usePageSeo } from '@/storefront/hooks/usePageSeo';
+import {
+  buildCanonicalUrl,
+  resolveSeoDescription,
+  resolveSeoTitle,
+} from '@/shared/lib/seo-meta';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
 
 export function CartPage() {
+  const location = useLocation();
   const siteQuery = usePublicSiteSettings();
+  const { seoSettings } = usePageSeo();
+  const cmsQuery = useOptionalPublicPage('sepet');
+  const cmsPage = cmsQuery.data;
   const { cart, isLoading, updateMutation, removeMutation } = useCart();
 
   return (
     <>
       <SeoHead
         siteSettings={siteQuery.data}
-        title={
-          siteQuery.data?.siteName
-            ? `Sepet | ${siteQuery.data.siteName}`
-            : 'Sepet'
-        }
+        seoSettings={seoSettings}
+        title={resolveSeoTitle(
+          cmsPage
+            ? {
+                seoTitle: cmsPage.seoTitle,
+                seoDescription: cmsPage.seoDescription,
+              }
+            : undefined,
+          seoSettings,
+          siteQuery.data,
+        )}
+        description={resolveSeoDescription(
+          cmsPage ? { seoDescription: cmsPage.seoDescription } : undefined,
+          seoSettings,
+          siteQuery.data,
+        )}
+        canonicalUrl={buildCanonicalUrl(
+          cmsPage?.canonicalUrl,
+          location.pathname,
+          seoSettings,
+          siteQuery.data,
+        )}
+        robotsIndex={cmsPage?.robotsIndex ?? true}
       />
 
       <div className="mx-auto max-w-4xl">
-        <h1 className="theme-heading text-2xl sm:text-3xl">Sepetim</h1>
+        <StorefrontPageHeading
+          cmsPage={cmsPage}
+          seoSettings={seoSettings}
+          siteSettings={siteQuery.data}
+        />
 
         {isLoading ? (
           <div className="mt-8 space-y-4 animate-pulse">
@@ -33,11 +67,8 @@ export function CartPage() {
         ) : !cart || cart.items.length === 0 ? (
           <div className="mt-10 text-center">
             <p className="text-sm text-theme-muted">Sepetiniz boş.</p>
-            <Link
-              to="/urunler"
-              className="theme-btn-primary mt-4 inline-block rounded-md px-4 py-2 text-sm"
-            >
-              Alışverişe başla
+            <Link to="/" className="theme-link mt-4 inline-block text-sm">
+              ← Ana sayfa
             </Link>
           </div>
         ) : (

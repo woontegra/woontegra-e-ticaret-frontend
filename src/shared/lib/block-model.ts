@@ -32,6 +32,8 @@ export interface ParsedBlockContent {
   faqItems?: BlockFaqItem[];
   testimonials?: BlockTestimonialItem[];
   brandLogos?: BlockBrandLogoItem[];
+  formKey?: string;
+  campaignId?: string;
 }
 
 export interface BlockSlideItem {
@@ -208,6 +210,8 @@ export function parseBlockContent(
     faqItems: parseObjectArray(raw.faqItems, parseFaqItem),
     testimonials: parseObjectArray(raw.testimonials, parseTestimonialItem),
     brandLogos: parseObjectArray(raw.brandLogos, parseBrandLogoItem),
+    formKey: getString(raw.formKey),
+    campaignId: getString(raw.campaignId),
   };
 }
 
@@ -281,6 +285,7 @@ export const DEFAULT_BLOCK_CONTENT: Partial<
   CONTACT_FORM: {
     headline: 'Bize ulaşın',
     description: 'Sorularınız için formu doldurun.',
+    formKey: '',
   },
   BRAND_LOGOS: {
     headline: 'Markalarımız',
@@ -293,6 +298,9 @@ export const DEFAULT_BLOCK_CONTENT: Partial<
     description: 'Kampanya ve yeniliklerden haberdar olun.',
   },
   CUSTOM_SPACER: {},
+  CAMPAIGN: {
+    campaignId: '',
+  },
 };
 
 export const DEFAULT_BLOCK_SETTINGS: Partial<

@@ -96,4 +96,5 @@ export const PAGE_BLOCK_TYPE_LABELS: Record<PageBlockType, string> = {
   TESTIMONIALS: 'Referanslar',
   NEWSLETTER: 'Bülten',
   CUSTOM_SPACER: 'Boşluk',
+  CAMPAIGN: 'Kampanya',
 };

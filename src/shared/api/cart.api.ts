@@ -1,8 +1,10 @@
 import type {
   CartDto,
   CheckoutInput,
+  CheckoutResultDto,
   OrderDto,
   OrderListResult,
+  PublicOrderDto,
 } from '@/shared/types/api';
 import { apiClient } from './client';
 
@@ -39,8 +41,23 @@ export function removeCartItem(id: string) {
   });
 }
 
+export function applyCartCoupon(code: string) {
+  return apiClient<CartDto>('/api/public/cart/coupon', {
+    ...cartRequest,
+    method: 'POST',
+    body: { code },
+  });
+}
+
+export function removeCartCoupon() {
+  return apiClient<CartDto>('/api/public/cart/coupon', {
+    ...cartRequest,
+    method: 'DELETE',
+  });
+}
+
 export function checkout(payload: CheckoutInput) {
-  return apiClient<OrderDto>('/api/public/checkout', {
+  return apiClient<CheckoutResultDto>('/api/public/checkout', {
     ...cartRequest,
     method: 'POST',
     body: payload,
@@ -48,7 +65,7 @@ export function checkout(payload: CheckoutInput) {
 }
 
 export function getPublicOrder(orderNumber: string) {
-  return apiClient<OrderDto>(`/api/public/orders/${orderNumber}`, {
+  return apiClient<PublicOrderDto>(`/api/public/orders/${orderNumber}`, {
     auth: false,
   });
 }
@@ -86,6 +103,16 @@ export const PAYMENT_STATUS_LABELS = {
   PAID: 'Ödendi',
   FAILED: 'Başarısız',
   REFUNDED: 'İade',
+  WAITING_BANK_TRANSFER: 'Havale bekleniyor',
+  CASH_ON_DELIVERY: 'Kapıda ödeme',
+} as const;
+
+export const SHIPPING_STATUS_LABELS = {
+  PENDING: 'Kargo bekliyor',
+  PREPARING: 'Hazırlanıyor',
+  SHIPPED: 'Kargoda',
+  DELIVERED: 'Teslim edildi',
+  RETURNED: 'İade edildi',
 } as const;
 
 export function formatMoney(value: number) {

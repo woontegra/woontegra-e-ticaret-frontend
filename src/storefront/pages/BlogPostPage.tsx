@@ -1,13 +1,22 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getPublicBlogPost } from '@/shared/api/blog.api';
 import { SeoHead } from '@/storefront/components/SeoHead';
+import { usePageSeo } from '@/storefront/hooks/usePageSeo';
+import {
+  buildCanonicalUrl,
+  resolveOgImageUrl,
+  resolveSeoDescription,
+  resolveSeoTitle,
+} from '@/shared/lib/seo-meta';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
 import { Badge } from '@/shared/ui';
 
 export function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
   const siteQuery = usePublicSiteSettings();
+  const { seoSettings } = usePageSeo();
 
   const postQuery = useQuery({
     queryKey: ['public', 'blog', 'posts', slug],
@@ -38,9 +47,29 @@ export function BlogPostPage() {
     <>
       <SeoHead
         siteSettings={siteQuery.data}
-        title={post.seoTitle || post.title}
-        description={post.seoDescription || post.excerpt || undefined}
-        ogImageUrl={post.ogImageUrl ?? post.coverImageUrl ?? undefined}
+        seoSettings={seoSettings}
+        title={resolveSeoTitle(
+          { seoTitle: post.seoTitle },
+          seoSettings,
+          siteQuery.data,
+        )}
+        description={resolveSeoDescription(
+          { seoDescription: post.seoDescription },
+          seoSettings,
+          siteQuery.data,
+        )}
+        ogImageUrl={resolveOgImageUrl(
+          { ogImageUrl: post.ogImageUrl },
+          seoSettings,
+          siteQuery.data,
+          post.coverImageUrl,
+        )}
+        canonicalUrl={buildCanonicalUrl(
+          null,
+          location.pathname,
+          seoSettings,
+          siteQuery.data,
+        )}
         robotsIndex={post.robotsIndex}
       />
 

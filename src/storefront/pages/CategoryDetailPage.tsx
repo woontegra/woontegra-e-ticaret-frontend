@@ -1,13 +1,21 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getPublicProductCategory } from '@/shared/api/products.api';
 import { ProductListingView } from '@/storefront/components/catalog/ProductListingView';
 import { SeoHead } from '@/storefront/components/SeoHead';
+import { usePageSeo } from '@/storefront/hooks/usePageSeo';
+import {
+  buildCanonicalUrl,
+  resolveSeoDescription,
+  resolveSeoTitle,
+} from '@/shared/lib/seo-meta';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
 
 export function CategoryDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
   const siteQuery = usePublicSiteSettings();
+  const { seoSettings } = usePageSeo();
 
   const categoryQuery = useQuery({
     queryKey: ['public', 'categories', slug],
@@ -41,13 +49,23 @@ export function CategoryDetailPage() {
     <>
       <SeoHead
         siteSettings={siteQuery.data}
-        title={
-          category.seoTitle ||
-          (siteQuery.data?.siteName
-            ? `${category.name} | ${siteQuery.data.siteName}`
-            : category.name)
-        }
-        description={category.seoDescription || category.description || undefined}
+        seoSettings={seoSettings}
+        title={resolveSeoTitle(
+          { seoTitle: category.seoTitle },
+          seoSettings,
+          siteQuery.data,
+        )}
+        description={resolveSeoDescription(
+          { seoDescription: category.seoDescription },
+          seoSettings,
+          siteQuery.data,
+        )}
+        canonicalUrl={buildCanonicalUrl(
+          null,
+          location.pathname,
+          seoSettings,
+          siteQuery.data,
+        )}
       />
 
       <div className="mx-auto max-w-6xl">

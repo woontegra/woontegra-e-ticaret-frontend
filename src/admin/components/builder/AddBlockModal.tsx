@@ -8,7 +8,7 @@ const BLOCK_GROUPS: Array<{
 }> = [
   {
     label: 'Hero & Banner',
-    types: ['HERO', 'HERO_SLIDER', 'IMAGE_BANNER'],
+    types: ['HERO', 'HERO_SLIDER', 'IMAGE_BANNER', 'CAMPAIGN'],
   },
   {
     label: 'İçerik',

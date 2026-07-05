@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addCartItem,
+  applyCartCoupon,
   getCart,
+  removeCartCoupon,
   removeCartItem,
   updateCartItem,
 } from '@/shared/api/cart.api';
@@ -42,6 +44,20 @@ export function useCart() {
     },
   });
 
+  const applyCouponMutation = useMutation({
+    mutationFn: applyCartCoupon,
+    onSuccess: (data) => {
+      queryClient.setQueryData(CART_QUERY_KEY, data);
+    },
+  });
+
+  const removeCouponMutation = useMutation({
+    mutationFn: removeCartCoupon,
+    onSuccess: (data) => {
+      queryClient.setQueryData(CART_QUERY_KEY, data);
+    },
+  });
+
   return {
     cart: cartQuery.data,
     isLoading: cartQuery.isLoading,
@@ -49,6 +65,8 @@ export function useCart() {
     addMutation,
     updateMutation,
     removeMutation,
+    applyCouponMutation,
+    removeCouponMutation,
     invalidate,
   };
 }

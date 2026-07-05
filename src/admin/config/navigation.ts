@@ -17,6 +17,9 @@ import {
   Mail,
   Menu,
   Newspaper,
+  Megaphone,
+  History,
+  Search,
   Tags,
 } from 'lucide-react';
 
@@ -69,6 +72,7 @@ export const adminNavigation: AdminNavGroup[] = [
       { label: 'Kargo', path: '/admin/shipping', icon: Truck },
       { label: 'Ödeme', path: '/admin/payments', icon: CreditCard },
       { label: 'Yorumlar', path: '/admin/reviews', icon: MessageSquare },
+      { label: 'Kampanyalar', path: '/admin/promotions', icon: Megaphone },
       { label: 'İletişim', path: '/admin/contact', icon: Mail },
     ],
   },
@@ -76,7 +80,9 @@ export const adminNavigation: AdminNavGroup[] = [
     label: 'Sistem',
     items: [
       { label: 'Kullanıcılar', path: '/admin/users', icon: UserCog },
+      { label: 'İşlem geçmişi', path: '/admin/audit-logs', icon: History },
       { label: 'Site Bilgileri', path: '/admin/settings/site', icon: Globe },
+      { label: 'SEO', path: '/admin/seo', icon: Search },
       { label: 'Firma / İletişim', path: '/admin/settings/company', icon: Building2 },
       { label: 'Raporlar', path: '/admin/reports', icon: BarChart3 },
     ],
@@ -86,8 +92,13 @@ export const adminNavigation: AdminNavGroup[] = [
 export const adminNavItems = adminNavigation.flatMap((group) => group.items);
 
 export function getAdminPageTitle(pathname: string): string {
-  if (pathname.startsWith('/admin/settings/site')) return 'Site Bilgileri';
   if (pathname.startsWith('/admin/settings/company')) return 'Firma / İletişim';
+  if (pathname.match(/^\/admin\/settings\/mail\/templates\/[^/]+$/))
+    return 'Mail şablonu düzenle';
+  if (pathname.startsWith('/admin/settings/mail/templates'))
+    return 'Mail şablonları';
+  if (pathname.startsWith('/admin/settings/mail')) return 'Mail ayarları';
+  if (pathname.startsWith('/admin/settings/site')) return 'Site Bilgileri';
   if (pathname.startsWith('/admin/content/pages/new')) return 'Yeni sayfa';
   if (pathname.match(/^\/admin\/content\/pages\/[^/]+$/)) return 'Sayfa düzenle';
   if (pathname.startsWith('/admin/content/pages')) return 'Sayfalar';
@@ -107,6 +118,29 @@ export function getAdminPageTitle(pathname: string): string {
   if (pathname.startsWith('/admin/products/new')) return 'Yeni ürün';
   if (pathname.match(/^\/admin\/products\/[^/]+$/)) return 'Ürün düzenle';
   if (pathname.startsWith('/admin/products')) return 'Ürünler / Yazılımlar';
+
+  if (pathname.startsWith('/admin/shipping/methods')) return 'Kargo yöntemleri';
+  if (pathname.startsWith('/admin/shipping/carriers')) return 'Kargo firmaları';
+  if (pathname.startsWith('/admin/shipping')) return 'Kargo';
+
+  if (pathname.startsWith('/admin/audit-logs')) return 'İşlem geçmişi';
+
+  if (pathname.startsWith('/admin/notifications')) return 'Bildirimler';
+
+  if (pathname.startsWith('/admin/reports')) return 'Raporlar';
+
+  if (pathname.startsWith('/admin/contact/forms')) return 'Form yönetimi';
+  if (pathname.startsWith('/admin/contact')) return 'İletişim mesajları';
+
+  if (pathname.startsWith('/admin/promotions/coupons')) return 'Kuponlar';
+  if (pathname.startsWith('/admin/promotions')) return 'Kampanyalar';
+
+  if (pathname.startsWith('/admin/seo/redirects')) return 'SEO yönlendirmeleri';
+  if (pathname.startsWith('/admin/seo')) return 'SEO ayarları';
+
+  if (pathname.startsWith('/admin/reviews')) return 'Ürün yorumları';
+
+  if (pathname.startsWith('/admin/payments')) return 'Ödeme ayarları';
 
   const item = adminNavItems.find((nav) =>
     nav.end ? pathname === nav.path : pathname.startsWith(nav.path),

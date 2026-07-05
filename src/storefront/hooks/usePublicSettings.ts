@@ -3,11 +3,20 @@ import {
   getPublicCompanySettings,
   getPublicSiteSettings,
 } from '@/shared/api/settings.api';
+import { getPublicSeoSettings } from '@/shared/api/seo.api';
 
 export function usePublicSiteSettings() {
   return useQuery({
     queryKey: ['public', 'site-settings'],
     queryFn: getPublicSiteSettings,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function usePublicSeoSettings() {
+  return useQuery({
+    queryKey: ['public', 'seo-settings'],
+    queryFn: getPublicSeoSettings,
     staleTime: 5 * 60_000,
   });
 }

@@ -1,12 +1,21 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getPublicPage } from '@/shared/api/pages.api';
 import { SeoHead } from '@/storefront/components/SeoHead';
+import { usePageSeo } from '@/storefront/hooks/usePageSeo';
+import {
+  buildCanonicalUrl,
+  resolveOgImageUrl,
+  resolveSeoDescription,
+  resolveSeoTitle,
+} from '@/shared/lib/seo-meta';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
 
 export function PublicPageView() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
   const siteQuery = usePublicSiteSettings();
+  const { seoSettings } = usePageSeo();
 
   const pageQuery = useQuery({
     queryKey: ['public', 'pages', slug],
@@ -40,9 +49,29 @@ export function PublicPageView() {
     <>
       <SeoHead
         siteSettings={siteQuery.data}
-        title={page.seoTitle || page.title}
-        description={page.seoDescription || page.excerpt || undefined}
-        ogImageUrl={page.ogImageUrl ?? undefined}
+        seoSettings={seoSettings}
+        title={resolveSeoTitle(
+          { seoTitle: page.seoTitle },
+          seoSettings,
+          siteQuery.data,
+        )}
+        description={resolveSeoDescription(
+          { seoDescription: page.seoDescription },
+          seoSettings,
+          siteQuery.data,
+        )}
+        ogImageUrl={resolveOgImageUrl(
+          { ogImageUrl: page.ogImageUrl },
+          seoSettings,
+          siteQuery.data,
+          page.featuredImageUrl,
+        )}
+        canonicalUrl={buildCanonicalUrl(
+          page.canonicalUrl,
+          location.pathname,
+          seoSettings,
+          siteQuery.data,
+        )}
         robotsIndex={page.robotsIndex}
       />
 

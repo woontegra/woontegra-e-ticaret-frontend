@@ -146,21 +146,18 @@ export function PublicFooter({ footer }: PublicFooterProps) {
 
         {footer.showNewsletter ? (
           <div className="theme-card mt-8">
-            <p className="text-sm font-medium theme-heading">Bültene abone olun</p>
-            <p className="mt-1 text-xs text-theme-muted">
-              Yeni ürünler ve kampanyalardan haberdar olun.
-            </p>
             <form
-              className="mt-3 flex max-w-md gap-2"
+              className="flex max-w-md flex-col gap-2 sm:flex-row"
               onSubmit={(event) => event.preventDefault()}
             >
               <input
                 type="email"
-                placeholder="E-posta adresiniz"
+                placeholder="E-posta"
+                aria-label="E-posta"
                 className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
               <button type="submit" className="theme-btn-primary text-sm">
-                Abone ol
+                Gönder
               </button>
             </form>
           </div>

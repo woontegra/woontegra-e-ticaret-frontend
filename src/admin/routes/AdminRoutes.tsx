@@ -9,7 +9,12 @@ import { BlogPostEditPage } from '@/admin/pages/BlogPostEditPage';
 import { BlogPostsListPage } from '@/admin/pages/BlogPostsListPage';
 import { MenuManagementPage } from '@/admin/pages/MenuManagementPage';
 import { MediaPage } from '@/admin/pages/MediaPage';
-import { ModulePlaceholderPage } from '@/admin/pages/ModulePlaceholderPage';
+import { ContactMessagesPage } from '@/admin/pages/ContactMessagesPage';
+import { FormDefinitionsPage } from '@/admin/pages/FormDefinitionsPage';
+import { ProductReviewsPage } from '@/admin/pages/ProductReviewsPage';
+import { PaymentSettingsPage } from '@/admin/pages/PaymentSettingsPage';
+import { ShippingCarriersPage } from '@/admin/pages/ShippingCarriersPage';
+import { ShippingMethodsPage } from '@/admin/pages/ShippingMethodsPage';
 import { OrdersListPage } from '@/admin/pages/OrdersListPage';
 import { OrderDetailPage } from '@/admin/pages/OrderDetailPage';
 import { PageEditPage } from '@/admin/pages/PageEditPage';
@@ -26,9 +31,22 @@ import { ProductsListPage } from '@/admin/pages/ProductsListPage';
 import { BrandsPage } from '@/admin/pages/BrandsPage';
 import { ProductAttributesPage } from '@/admin/pages/ProductAttributesPage';
 import { CompanySettingsPage } from '@/admin/pages/CompanySettingsPage';
+import { MailSettingsPage } from '@/admin/pages/MailSettingsPage';
+import { MailTemplateEditPage } from '@/admin/pages/MailTemplateEditPage';
+import { MailTemplatesPage } from '@/admin/pages/MailTemplatesPage';
+import { SeoSettingsPage } from '@/admin/pages/SeoSettingsPage';
+import { RedirectRulesPage } from '@/admin/pages/RedirectRulesPage';
+import { SeoLayout } from '@/admin/layout/SeoLayout';
+import { CouponsPage } from '@/admin/pages/CouponsPage';
+import { CampaignsPage } from '@/admin/pages/CampaignsPage';
+import { PromotionLayout } from '@/admin/layout/PromotionLayout';
 import { SiteSettingsPage } from '@/admin/pages/SiteSettingsPage';
 import { UnauthorizedPage } from '@/admin/pages/UnauthorizedPage';
 import { UsersPage } from '@/admin/pages/UsersPage';
+import { NotificationsPage } from '@/admin/pages/NotificationsPage';
+import { AuditLogsPage } from '@/admin/pages/AuditLogsPage';
+import { ReportsPage } from '@/admin/pages/ReportsPage';
+import { ModulePlaceholderPage } from '@/admin/pages/ModulePlaceholderPage';
 
 export function AdminRoutes() {
   return (
@@ -43,19 +61,35 @@ export function AdminRoutes() {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route
+          path="notifications"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
+              <NotificationsPage />
+            </RequireRole>
+          }
+        />
         <Route path="unauthorized" element={<UnauthorizedPage />} />
         <Route
           path="users"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN']}>
               <UsersPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="audit-logs"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN']}>
+              <AuditLogsPage />
             </RequireRole>
           }
         />
         <Route
           path="products"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN', 'STAFF']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
               <ProductsListPage />
             </RequireRole>
           }
@@ -63,7 +97,7 @@ export function AdminRoutes() {
         <Route
           path="products/categories"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <ProductCategoriesPage />
             </RequireRole>
           }
@@ -71,7 +105,7 @@ export function AdminRoutes() {
         <Route
           path="products/brands"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <BrandsPage />
             </RequireRole>
           }
@@ -79,7 +113,7 @@ export function AdminRoutes() {
         <Route
           path="products/attributes"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <ProductAttributesPage />
             </RequireRole>
           }
@@ -87,7 +121,7 @@ export function AdminRoutes() {
         <Route
           path="products/:id"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN', 'STAFF']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
               <ProductEditPage />
             </RequireRole>
           }
@@ -95,7 +129,7 @@ export function AdminRoutes() {
         <Route
           path="orders"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN', 'STAFF']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
               <OrdersListPage />
             </RequireRole>
           }
@@ -103,7 +137,7 @@ export function AdminRoutes() {
         <Route
           path="orders/:id"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN', 'STAFF']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
               <OrderDetailPage />
             </RequireRole>
           }
@@ -111,7 +145,7 @@ export function AdminRoutes() {
         <Route
           path="customers"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN', 'STAFF']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
               <ModulePlaceholderPage title="Müşteriler" />
             </RequireRole>
           }
@@ -123,7 +157,7 @@ export function AdminRoutes() {
         <Route
           path="content/pages"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <PagesListPage />
             </RequireRole>
           }
@@ -131,7 +165,7 @@ export function AdminRoutes() {
         <Route
           path="content/pages/:id"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <PageEditPage />
             </RequireRole>
           }
@@ -139,7 +173,7 @@ export function AdminRoutes() {
         <Route
           path="content/blog/posts"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <BlogPostsListPage />
             </RequireRole>
           }
@@ -147,7 +181,7 @@ export function AdminRoutes() {
         <Route
           path="content/blog/posts/:id"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <BlogPostEditPage />
             </RequireRole>
           }
@@ -155,7 +189,7 @@ export function AdminRoutes() {
         <Route
           path="content/blog/categories"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <BlogCategoriesPage />
             </RequireRole>
           }
@@ -163,7 +197,7 @@ export function AdminRoutes() {
         <Route
           path="content/menus"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <MenuManagementPage />
             </RequireRole>
           }
@@ -171,7 +205,7 @@ export function AdminRoutes() {
         <Route
           path="media"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <MediaPage />
             </RequireRole>
           }
@@ -179,7 +213,7 @@ export function AdminRoutes() {
         <Route
           path="theme"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
               <ThemeLayout />
             </RequireRole>
           }
@@ -193,47 +227,94 @@ export function AdminRoutes() {
         <Route
           path="shipping"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
-              <ModulePlaceholderPage title="Kargo" />
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <Navigate to="/admin/shipping/carriers" replace />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="shipping/carriers"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <ShippingCarriersPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="shipping/methods"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <ShippingMethodsPage />
             </RequireRole>
           }
         />
         <Route
           path="payments"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
-              <ModulePlaceholderPage title="Ödeme" />
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <PaymentSettingsPage />
             </RequireRole>
           }
         />
         <Route
           path="reviews"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN', 'STAFF']}>
-              <ModulePlaceholderPage title="Yorumlar" />
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
+              <ProductReviewsPage />
             </RequireRole>
           }
         />
         <Route
           path="contact"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN', 'STAFF']}>
-              <ModulePlaceholderPage title="İletişim" />
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
+              <ContactMessagesPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="contact/forms"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <FormDefinitionsPage />
             </RequireRole>
           }
         />
         <Route
           path="reports"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER', 'ADMIN']}>
-              <ModulePlaceholderPage title="Raporlar" />
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']}>
+              <ReportsPage />
             </RequireRole>
           }
         />
         <Route
+          path="promotions"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <PromotionLayout />
+            </RequireRole>
+          }
+        >
+          <Route index element={<Navigate to="campaigns" replace />} />
+          <Route path="campaigns" element={<CampaignsPage />} />
+          <Route path="coupons" element={<CouponsPage />} />
+        </Route>
+        <Route
+          path="seo"
+          element={
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN', 'EDITOR']}>
+              <SeoLayout />
+            </RequireRole>
+          }
+        >
+          <Route index element={<SeoSettingsPage />} />
+          <Route path="redirects" element={<RedirectRulesPage />} />
+        </Route>
+        <Route
           path="settings"
           element={
-            <RequireRole roles={['SUPER_ADMIN', 'OWNER']}>
+            <RequireRole roles={['SUPER_ADMIN', 'ADMIN']}>
               <SettingsLayout />
             </RequireRole>
           }
@@ -241,6 +322,12 @@ export function AdminRoutes() {
           <Route index element={<Navigate to="site" replace />} />
           <Route path="site" element={<SiteSettingsPage />} />
           <Route path="company" element={<CompanySettingsPage />} />
+          <Route path="mail" element={<MailSettingsPage />} />
+          <Route path="mail/templates" element={<MailTemplatesPage />} />
+          <Route
+            path="mail/templates/:id"
+            element={<MailTemplateEditPage />}
+          />
         </Route>
       </Route>
 

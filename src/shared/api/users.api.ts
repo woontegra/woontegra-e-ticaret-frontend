@@ -2,24 +2,18 @@ import { apiClient } from './client';
 import type { AuthUser } from './auth.api';
 
 export interface CreateUserPayload {
-  username: string;
+  name: string;
   email: string;
   password: string;
-  firstName?: string;
-  lastName?: string;
   role: string;
-  tenantId?: string | null;
   isActive?: boolean;
 }
 
 export interface UpdateUserPayload {
-  username?: string;
+  name?: string;
   email?: string;
   password?: string;
-  firstName?: string | null;
-  lastName?: string | null;
   role?: string;
-  tenantId?: string | null;
   isActive?: boolean;
 }
 

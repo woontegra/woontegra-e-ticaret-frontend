@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { OrderDto, OrderStatus, PaymentStatus, ShippingStatus } from '@/shared/types/api';
 import { ApiError } from '@/shared/api/client';
 import {
@@ -10,12 +10,15 @@ import {
   orderStatusBadgeVariant,
   updateOrderAdminNote,
   updateOrderPaymentStatus,
+  updateOrderShipment,
   updateOrderShippingStatus,
   updateOrderStatus,
 } from '@/shared/api/orders.api';
+import { listActiveShippingCarriers } from '@/shared/api/shipping.api';
 import {
   Badge,
   Button,
+  Input,
   Label,
   Select,
   Textarea,
@@ -29,10 +32,24 @@ interface OrderDetailPanelProps {
 export function OrderDetailPanel({ order, onUpdated }: OrderDetailPanelProps) {
   const queryClient = useQueryClient();
   const [adminNote, setAdminNote] = useState(order.adminNote ?? '');
+  const [carrierId, setCarrierId] = useState(order.shipment?.carrierId ?? '');
+  const [trackingNumber, setTrackingNumber] = useState(
+    order.shipment?.trackingNumber ?? '',
+  );
+
+  const carriersQuery = useQuery({
+    queryKey: ['admin', 'shipping-carriers', 'active'],
+    queryFn: listActiveShippingCarriers,
+  });
 
   useEffect(() => {
     setAdminNote(order.adminNote ?? '');
   }, [order.adminNote, order.id]);
+
+  useEffect(() => {
+    setCarrierId(order.shipment?.carrierId ?? '');
+    setTrackingNumber(order.shipment?.trackingNumber ?? '');
+  }, [order.id, order.shipment?.carrierId, order.shipment?.trackingNumber]);
 
   const invalidate = (updated: OrderDto) => {
     queryClient.setQueryData(['admin', 'orders', order.id], updated);
@@ -62,21 +79,37 @@ export function OrderDetailPanel({ order, onUpdated }: OrderDetailPanelProps) {
     onSuccess: invalidate,
   });
 
+  const shipmentMutation = useMutation({
+    mutationFn: () =>
+      updateOrderShipment(order.id, {
+        carrierId: carrierId || null,
+        trackingNumber: trackingNumber.trim() || null,
+        status:
+          order.shippingStatus ??
+          order.shipment?.status ??
+          'PENDING',
+      }),
+    onSuccess: invalidate,
+  });
+
   const isSaving =
     statusMutation.isPending ||
     paymentMutation.isPending ||
     shippingMutation.isPending ||
-    noteMutation.isPending;
+    noteMutation.isPending ||
+    shipmentMutation.isPending;
 
   const mutationError =
     (statusMutation.error ??
       paymentMutation.error ??
       shippingMutation.error ??
-      noteMutation.error) instanceof ApiError
+      noteMutation.error ??
+      shipmentMutation.error) instanceof ApiError
       ? (statusMutation.error ??
           paymentMutation.error ??
           shippingMutation.error ??
-          noteMutation.error as ApiError).message
+          noteMutation.error ??
+          shipmentMutation.error as ApiError).message
       : null;
 
   return (
@@ -152,6 +185,57 @@ export function OrderDetailPanel({ order, onUpdated }: OrderDetailPanelProps) {
             </Select>
           </div>
         </div>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-semibold text-slate-800">Kargo takibi</h3>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Kargo firması</Label>
+            <Select
+              value={carrierId}
+              disabled={isSaving}
+              onChange={(event) => setCarrierId(event.target.value)}
+            >
+              <option value="">Seçin…</option>
+              {(carriersQuery.data ?? []).map((carrier) => (
+                <option key={carrier.id} value={carrier.id}>
+                  {carrier.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label>Takip numarası</Label>
+            <Input
+              value={trackingNumber}
+              disabled={isSaving}
+              placeholder="Kargo takip no"
+              onChange={(event) => setTrackingNumber(event.target.value)}
+            />
+          </div>
+        </div>
+        {order.shipment?.trackingUrl ? (
+          <p className="mt-2 text-sm">
+            <span className="text-slate-500">Takip linki: </span>
+            <a
+              href={order.shipment.trackingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-slate-900 underline"
+            >
+              {order.shipment.trackingUrl}
+            </a>
+          </p>
+        ) : null}
+        <Button
+          size="sm"
+          className="mt-2"
+          disabled={shipmentMutation.isPending}
+          onClick={() => shipmentMutation.mutate()}
+        >
+          Kargo bilgisini kaydet
+        </Button>
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2">

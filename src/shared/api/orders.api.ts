@@ -72,6 +72,20 @@ export function updateOrderAdminNote(id: string, note: string | null) {
   });
 }
 
+export function updateOrderShipment(
+  id: string,
+  input: {
+    carrierId?: string | null;
+    trackingNumber?: string | null;
+    status?: ShippingStatus;
+  },
+) {
+  return apiClient<OrderDto>(`/api/admin/orders/${id}/shipment`, {
+    method: 'PATCH',
+    body: input,
+  });
+}
+
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING: 'Beklemede',
   CONFIRMED: 'Onaylandı',
@@ -85,6 +99,8 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   PAID: 'Ödendi',
   FAILED: 'Başarısız',
   REFUNDED: 'İade',
+  WAITING_BANK_TRANSFER: 'Havale bekleniyor',
+  CASH_ON_DELIVERY: 'Kapıda ödeme',
 };
 
 export const SHIPPING_STATUS_LABELS: Record<ShippingStatus, string> = {

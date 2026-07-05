@@ -4,6 +4,7 @@ import { cn } from '@/shared/lib/cn';
 const tabs = [
   { label: 'Site Bilgileri', path: '/admin/settings/site' },
   { label: 'Firma / İletişim', path: '/admin/settings/company' },
+  { label: 'Mail Ayarları', path: '/admin/settings/mail' },
 ];
 
 export function SettingsLayout() {

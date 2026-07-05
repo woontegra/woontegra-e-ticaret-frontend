@@ -1,24 +1,19 @@
 import { apiClient } from './client';
 
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  isActive?: boolean;
+  lastLoginAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface LoginPayload {
   email: string;
   password: string;
-}
-
-export interface AuthUser {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  tenantId?: string | null;
-  isActive?: boolean;
-  tenant?: {
-    id: string;
-    slug: string;
-    name: string;
-  } | null;
 }
 
 export interface LoginResponse {

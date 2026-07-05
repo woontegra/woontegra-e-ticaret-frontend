@@ -188,11 +188,11 @@ export function UsersPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableHeaderCell>Kullanıcı</TableHeaderCell>
+                <TableHeaderCell>Ad</TableHeaderCell>
                 <TableHeaderCell>E-posta</TableHeaderCell>
                 <TableHeaderCell>Rol</TableHeaderCell>
                 <TableHeaderCell>Durum</TableHeaderCell>
-                <TableHeaderCell>Tenant</TableHeaderCell>
+                <TableHeaderCell>Son giriş</TableHeaderCell>
                 {canManage ? (
                   <TableHeaderCell className="text-right">İşlem</TableHeaderCell>
                 ) : null}
@@ -204,19 +204,8 @@ export function UsersPage() {
               ) : usersQuery.data?.length ? (
                 usersQuery.data.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-slate-900">
-                          {user.username}
-                        </p>
-                        {(user.firstName || user.lastName) && (
-                          <p className="text-xs text-slate-500">
-                            {[user.firstName, user.lastName]
-                              .filter(Boolean)
-                              .join(' ')}
-                          </p>
-                        )}
-                      </div>
+                    <TableCell className="font-medium text-slate-900">
+                      {user.name}
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
@@ -230,7 +219,9 @@ export function UsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-slate-500">
-                      {user.tenant?.name ?? '—'}
+                      {user.lastLoginAt
+                        ? new Date(user.lastLoginAt).toLocaleString('tr-TR')
+                        : '—'}
                     </TableCell>
                     {canManage ? (
                       <TableCell>
@@ -294,7 +285,7 @@ export function UsersPage() {
         title="Kullanıcıyı sil"
         description={
           userToDelete
-            ? `${userToDelete.username} kalıcı olarak silinecek.`
+            ? `${userToDelete.name} kalıcı olarak silinecek.`
             : undefined
         }
         footer={

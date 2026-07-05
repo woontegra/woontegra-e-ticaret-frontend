@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
-import type { SiteSettingDto } from '@/shared/types/api';
+import type { SeoSettingPublicDto, SiteSettingDto } from '@/shared/types/api';
 
 interface SeoHeadProps {
   siteSettings?: SiteSettingDto;
+  seoSettings?: SeoSettingPublicDto;
   title?: string;
   description?: string;
   ogImageUrl?: string;
+  canonicalUrl?: string;
   robotsIndex?: boolean;
 }
 
@@ -16,8 +18,7 @@ function upsertMeta(
   let element = document.querySelector(selector);
 
   if (!element) {
-    const tag = selector.includes('property=') ? 'meta' : 'meta';
-    element = document.createElement(tag);
+    element = document.createElement('meta');
     for (const [key, value] of Object.entries(attributes)) {
       element.setAttribute(key, value);
     }
@@ -42,20 +43,72 @@ function upsertLink(rel: string, href: string): void {
   link.href = href;
 }
 
+function injectGoogleAnalytics(measurementId: string): void {
+  const scriptId = 'woontegra-ga-script';
+  if (document.getElementById(scriptId)) return;
+
+  const script = document.createElement('script');
+  script.id = scriptId;
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+  document.head.appendChild(script);
+
+  const inline = document.createElement('script');
+  inline.id = 'woontegra-ga-inline';
+  inline.textContent = `
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '${measurementId}');
+  `;
+  document.head.appendChild(inline);
+}
+
+function injectMetaPixel(pixelId: string): void {
+  if (document.getElementById('woontegra-meta-pixel')) return;
+
+  const script = document.createElement('script');
+  script.id = 'woontegra-meta-pixel';
+  script.textContent = `
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '${pixelId}');
+    fbq('track', 'PageView');
+  `;
+  document.head.appendChild(script);
+}
+
 export function SeoHead({
   siteSettings,
+  seoSettings,
   title,
   description,
   ogImageUrl,
+  canonicalUrl,
   robotsIndex = true,
 }: SeoHeadProps) {
-  const pageTitle = title || siteSettings?.defaultSeoTitle || siteSettings?.siteName || '';
+  const pageTitle =
+    title ||
+    seoSettings?.defaultTitle ||
+    siteSettings?.defaultSeoTitle ||
+    siteSettings?.siteName ||
+    '';
   const pageDescription =
     description ||
+    seoSettings?.defaultDescription ||
     siteSettings?.defaultSeoDescription ||
     siteSettings?.siteDescription ||
     '';
-  const imageUrl = ogImageUrl || siteSettings?.ogImageUrl || undefined;
+  const imageUrl =
+    ogImageUrl || seoSettings?.defaultOgImageUrl || siteSettings?.ogImageUrl || undefined;
+  const gaId = seoSettings?.googleAnalyticsId?.trim();
+  const pixelId = seoSettings?.metaPixelId?.trim();
 
   useEffect(() => {
     if (pageTitle) {
@@ -93,6 +146,10 @@ export function SeoHead({
       content: robotsIndex ? 'index, follow' : 'noindex, nofollow',
     });
 
+    if (canonicalUrl) {
+      upsertLink('canonical', canonicalUrl);
+    }
+
     if (siteSettings?.faviconUrl) {
       upsertLink('icon', siteSettings.faviconUrl);
     }
@@ -102,7 +159,20 @@ export function SeoHead({
     siteSettings?.faviconUrl,
     imageUrl,
     robotsIndex,
+    canonicalUrl,
   ]);
+
+  useEffect(() => {
+    if (gaId) {
+      injectGoogleAnalytics(gaId);
+    }
+  }, [gaId]);
+
+  useEffect(() => {
+    if (pixelId) {
+      injectMetaPixel(pixelId);
+    }
+  }, [pixelId]);
 
   return null;
 }

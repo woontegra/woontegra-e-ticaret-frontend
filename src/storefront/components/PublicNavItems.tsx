@@ -10,6 +10,7 @@ interface PublicNavItemsProps {
   className?: string;
   nested?: boolean;
   linkClassName?: string;
+  onNavigate?: () => void;
 }
 
 export function PublicNavItems({
@@ -17,6 +18,7 @@ export function PublicNavItems({
   className = '',
   nested = false,
   linkClassName = 'theme-link',
+  onNavigate,
 }: PublicNavItemsProps) {
   if (items.length === 0) return null;
 
@@ -24,13 +26,18 @@ export function PublicNavItems({
     <ul className={className}>
       {items.map((item) => (
         <li key={item.id} className={nested ? 'mt-1' : undefined}>
-          <PublicNavLink item={item} className={linkClassName} />
+          <PublicNavLink
+            item={item}
+            className={linkClassName}
+            onNavigate={onNavigate}
+          />
           {item.children.length > 0 ? (
             <PublicNavItems
               items={item.children}
               className="ml-3 mt-1 space-y-1 border-l border-theme-border pl-3"
               nested
               linkClassName={linkClassName}
+              onNavigate={onNavigate}
             />
           ) : null}
         </li>
@@ -42,9 +49,11 @@ export function PublicNavItems({
 function PublicNavLink({
   item,
   className,
+  onNavigate,
 }: {
   item: PublicMenuItemDto;
   className: string;
+  onNavigate?: () => void;
 }) {
   if (isExternalHref(item.href)) {
     return (
@@ -53,6 +62,7 @@ function PublicNavLink({
         target={item.openInNewTab ? '_blank' : undefined}
         rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
         className={className}
+        onClick={onNavigate}
       >
         {item.label}
       </a>
@@ -66,6 +76,7 @@ function PublicNavLink({
         target="_blank"
         rel="noopener noreferrer"
         className={className}
+        onClick={onNavigate}
       >
         {item.label}
       </a>
@@ -73,7 +84,7 @@ function PublicNavLink({
   }
 
   return (
-    <Link to={item.href} className={className}>
+    <Link to={item.href} className={className} onClick={onNavigate}>
       {item.label}
     </Link>
   );

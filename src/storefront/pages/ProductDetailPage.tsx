@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import type { CartItemDto, PublicProductVariantDto } from '@/shared/types/api';
@@ -9,6 +9,7 @@ import {
 } from '@/shared/api/products.api';
 import { SeoHead } from '@/storefront/components/SeoHead';
 import { ProductAttributesTable } from '@/storefront/components/ProductAttributesTable';
+import { ProductReviewsSection } from '@/storefront/components/ProductReviewsSection';
 import { CartAddedModal } from '@/storefront/components/CartAddedModal';
 import {
   getVariantDisplayImage,
@@ -16,6 +17,13 @@ import {
   ProductVariantSelector,
 } from '@/storefront/components/ProductVariantSelector';
 import { usePublicSiteSettings } from '@/storefront/hooks/usePublicSettings';
+import { usePageSeo } from '@/storefront/hooks/usePageSeo';
+import {
+  buildCanonicalUrl,
+  resolveOgImageUrl,
+  resolveSeoDescription,
+  resolveSeoTitle,
+} from '@/shared/lib/seo-meta';
 import { ApiError } from '@/shared/api/client';
 import { useCart } from '@/storefront/hooks/useCart';
 import { Badge, Button } from '@/shared/ui';
@@ -30,7 +38,9 @@ function formatPrice(value: number | null) {
 
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
   const siteQuery = usePublicSiteSettings();
+  const { seoSettings } = usePageSeo();
   const { addMutation, itemCount } = useCart();
   const [selectedVariant, setSelectedVariant] =
     useState<PublicProductVariantDto | null>(null);
@@ -121,14 +131,29 @@ export function ProductDetailPage() {
     <>
       <SeoHead
         siteSettings={siteQuery.data}
-        title={
-          product.seoTitle ||
-          (siteQuery.data?.siteName
-            ? `${product.name} | ${siteQuery.data.siteName}`
-            : product.name)
-        }
-        description={product.seoDescription || product.shortDescription || undefined}
-        ogImageUrl={product.ogImageUrl || product.imageUrl || undefined}
+        seoSettings={seoSettings}
+        title={resolveSeoTitle(
+          { seoTitle: product.seoTitle },
+          seoSettings,
+          siteQuery.data,
+        )}
+        description={resolveSeoDescription(
+          { seoDescription: product.seoDescription },
+          seoSettings,
+          siteQuery.data,
+        )}
+        ogImageUrl={resolveOgImageUrl(
+          { ogImageUrl: product.ogImageUrl },
+          seoSettings,
+          siteQuery.data,
+          product.imageUrl,
+        )}
+        canonicalUrl={buildCanonicalUrl(
+          product.canonicalUrl,
+          location.pathname,
+          seoSettings,
+          siteQuery.data,
+        )}
         robotsIndex={product.robotsIndex}
       />
 
@@ -273,6 +298,8 @@ export function ProductDetailPage() {
         ) : null}
 
         <ProductAttributesTable attributes={product.attributes} />
+
+        {slug ? <ProductReviewsSection productSlug={slug} /> : null}
       </div>
 
       <CartAddedModal
